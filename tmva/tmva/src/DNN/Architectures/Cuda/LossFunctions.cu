@@ -24,12 +24,15 @@ namespace DNN
 {
 
 //____________________________________________________________________________
-CudaDouble_t TCuda::MeanSquaredError(const TCudaMatrix & Y,
-                                    const TCudaMatrix & output)
+template<bool doProfiling>
+CudaDouble_t TCuda<doProfiling>::MeanSquaredError(const TCudaMatrix & Y,
+                                                  const TCudaMatrix & output)
 {
     dim3 blockDims = TDevice::BlockDims();
     dim3 gridDims  = TDevice::GridDims(Y);
     cudaStream_t s = Y.GetComputeStream();
+
+    tick();
     TCudaMatrix::ResetDeviceReturn();
     ::TMVA::DNN::Cuda::MeanSquaredError<<<gridDims, blockDims, 0, s>>>(
         TCudaMatrix::GetDeviceReturnPointer(),
@@ -37,56 +40,61 @@ CudaDouble_t TCuda::MeanSquaredError(const TCudaMatrix & Y,
         output.GetDataPointer(),
         (int) Y.GetNrows(),
         (int) Y.GetNcols());
-    return TCudaMatrix::GetDeviceReturn();
+   CudaDouble_t result = TCudaMatrix::GetDeviceReturn();
+   tock(fTimings.TimeMeanSquaredError);
+
+   return result;
 }
 
 //____________________________________________________________________________
-void TCuda::MeanSquaredErrorGradients(TCudaMatrix & dY,
-                                    const TCudaMatrix & Y,
-                                    const TCudaMatrix & output)
+template<bool doProfiling>
+void TCuda<doProfiling>::MeanSquaredErrorGradients(TCudaMatrix & dY,
+                                                   const TCudaMatrix & Y,
+                                                   const TCudaMatrix & output)
 {
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(Y);
    cudaStream_t s = Y.GetComputeStream();
+   tick();
    ::TMVA::DNN::Cuda::MeanSquaredErrorGradients<<<gridDims, blockDims, 0, s>>>(
-       dY.GetDataPointer(),
-       Y.GetDataPointer(),
-       output.GetDataPointer(),
-       (int) Y.GetNrows(),
-       (int) Y.GetNcols());
+   tock(fTimings.TimeMeanSquaredErrorGradients);
 }
 
 //____________________________________________________________________________
-CudaDouble_t TCuda::CrossEntropy(const TCudaMatrix & Y,
-                                const TCudaMatrix & output)
+template<bool doProfiling>
+CudaDouble_t TCuda<doProfiling>::CrossEntropy(const TCudaMatrix & Y,
+                                              const TCudaMatrix & output)
 {
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(Y);
    TCudaMatrix::ResetDeviceReturn();
    cudaStream_t s = Y.GetComputeStream();
+
+   tick();
    ::TMVA::DNN::Cuda::CrossEntropy<<<gridDims, blockDims, 0, s>>>(
-       TCudaMatrix::GetDeviceReturnPointer(),
-       Y.GetDataPointer(),
-       output.GetDataPointer(),
-       (int) Y.GetNrows(),
-       (int) Y.GetNcols());
-   return TCudaMatrix::GetDeviceReturn();
+   CudaDouble_t result = TCudaMatrix::GetDeviceReturn();
+   tock(fTimings.TimeCrossEntropy);
+
+   return result;
 }
 
 //____________________________________________________________________________
-void TCuda::CrossEntropyGradients(TCudaMatrix & dY,
-                                 const TCudaMatrix & Y,
-                                 const TCudaMatrix & output)
+template<bool doProfiling>
+void TCuda<doProfiling>::CrossEntropyGradients(TCudaMatrix & dY,
+                                               const TCudaMatrix & Y,
+                                               const TCudaMatrix & output)
 {
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(Y);
    cudaStream_t s = Y.GetComputeStream();
+   tick();
    ::TMVA::DNN::Cuda::CrossEntropyGradients<<<gridDims, blockDims, 0, s>>>(
        dY.GetDataPointer(),
        Y.GetDataPointer(),
        output.GetDataPointer(),
        (int) Y.GetNrows(),
        (int) Y.GetNcols());
+   tock(fTimings.TimeCrossEntropyGradients);
 }
 
 } // namespace DNN

@@ -67,32 +67,31 @@ private:
     Scalar_t fMinimumError; ///< The minimum loss achieved on the training set during the current traning session.
 
 public:
-    TGradientDescent();
-    TGradientDescent(Scalar_t learningRate,
-                     size_t convergenceSteps,
-                     size_t testInterval);
-    /*! Reset minimizer object to initial state. Does nothing for this minimizer. */
-    void Reset() {};
-    /*! Train the given net using the given training input data (events), training
+    tgradientdescent();
+    tgradientdescent(scalar_t learningrate,
+                     size_t convergencesteps,
+                     size_t testinterval);
+    /*! reset minimizer object to initial state. does nothing for this minimizer. */
+    void reset() {};
+    /*! train the given net using the given training input data (events), training
       output data (labels), test input data (events), test output data (labels). */
-    template <typename Data_t, typename Net_t>
-        Scalar_t Train(const Data_t & TrainingDataIn,
-                       size_t nTrainingSamples,
-                       const Data_t & TestDataIn,
-                       size_t nTestSamples,
-                       Net_t & net);
-    /*! Perform a single optimization step on a given batch. Propagates the input
+    template <typename data_t, typename net_t>
+        scalar_t train(const data_t & trainingdatain,
+                       size_t ntrainingsamples,
+                       const data_t & testdatain,
+                       size_t ntestsamples,
+                       net_t & net);
+    /*! perform a single optimization step on a given batch. propagates the input
       matrix foward through the net, evaluates the loss and propagates the gradients
-      backward through the net. The computed gradients are scaled by the learning
+      backward through the net. the computed gradients are scaled by the learning
       rate \f$\alpha\f$ and subtracted from the weights and bias values of each
       layer. */
-    template <typename Net_t>
-    Scalar_t Step(Net_t &net,
-                  Matrix_t &input,
-                  const Matrix_t &output);
-    /** Does not evaluate the loss and therefore not trigger a possible synchronization
-     *  with the device. Trains the weights of each layer, but only the bias terms of
-     *  the first layer for compatibility with the previous implementation. */
+    template <typename net_t>
+    void Step(Net_t &net,
+              Matrix_t &input,
+              const Matrix_t &output);
+    /** Similar to Step(...) but only trains bias terms in the first layer. This is
+     *  for compatibility with the previous implementation. */
     template <typename Net_t>
     void StepReducedWeights(Net_t &net,
                             Matrix_t &input,
@@ -111,9 +110,9 @@ public:
 
     size_t   GetConvergenceCount() const {return fConvergenceCount;}
     size_t   getConvergenceSteps() const {return fConvergenceSteps;}
-    Scalar_t GetTrainingError() const {return fTrainingError;}
-    Scalar_t GetTestError() const     {return fTestError;}
-    size_t   GetTestInterval() const  {return fTestInterval;}
+    Scalar_t GetTrainingError()    const {return fTrainingError;}
+    Scalar_t GetTestError()        const {return fTestError;}
+    size_t   GetTestInterval()     const {return fTestInterval;}
 
     void SetConvergenceSteps(size_t steps) {fConvergenceSteps = steps;}
     void SetTestInterval(size_t interval)  {fTestInterval = interval;}
@@ -196,14 +195,12 @@ template <typename Data_t, typename Net_t>
 
 //______________________________________________________________________________
 template<typename Architecture_t>
-    template <typename Net_t>
-    auto inline TGradientDescent<Architecture_t>::Step(Net_t & net,
-                                                       Matrix_t &input,
-                                                       const Matrix_t &output)
-    -> Scalar_t
+template <typename Net_t>
+void inline TGradientDescent<Architecture_t>::Step(Net_t & net,
+                                                   Matrix_t &input,
+                                                   const Matrix_t &output)
 {
-    Scalar_t loss = net.Loss(input, output);
-    fTrainingError = loss;
+    net.Forward(input);
     net.Backward(input, output);
 
     for (size_t i = 0; i < net.GetDepth(); i++)
@@ -216,7 +213,6 @@ template<typename Architecture_t>
                                  layer.GetBiasGradients(),
                                  -fLearningRate);
     }
-    return loss;
 }
 
 //______________________________________________________________________________
@@ -290,7 +286,7 @@ bool inline TGradientDescent<Architecture_t>::HasConverged()
       fConvergenceCount = 0;
       fMinimumError     = fTestError;
    } else {
-      fConvergenceCount++;
+      fConvergenceCount += fTestInterval;
    }
 
    return (fConvergenceCount >= fConvergenceSteps);

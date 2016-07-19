@@ -24,46 +24,59 @@ namespace DNN
 {
 
 //______________________________________________________________________________
-void TCuda::IdentityDerivative(TCudaMatrix & A)
+template<bool doProfiling>
+void TCuda<doProfiling>::IdentityDerivative(TCudaMatrix & A)
 {
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(A);
    cudaStream_t s = A.GetComputeStream();
-   ::TMVA::DNN::Cuda::IdentityDerivative<<<gridDims, blockDims, 0, s>>>(A.GetDataPointer(),
-                                                                  (int) A.GetNrows(),
-                                                                  (int) A.GetNcols());
+   tick();
+   ::TMVA::DNN::Cuda::IdentityDerivative<<<gridDims, blockDims, 0, s>>>(
+       A.GetDataPointer(),
+       (int) A.GetNrows(),
+       (int) A.GetNcols());
+   tock(fTimings.TimeIdentityDerivative);
 }
 
 //______________________________________________________________________________
-void TCuda::Relu(TCudaMatrix & A)
+template<bool doProfiling>
+void TCuda<doProfiling>::Relu(TCudaMatrix & A)
 {
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(A);
    cudaStream_t s = A.GetComputeStream();
+   tick();
    ::TMVA::DNN::Cuda::Relu<<<gridDims, blockDims, 0, s>>>(A.GetDataPointer(),
                                                   (int) A.GetNrows(),
                                                   (int) A.GetNcols());
+   tock(fTimings.TimeRelu);
 }
 
 //______________________________________________________________________________
-void TCuda::ReluDerivative(TCudaMatrix & B, const TCudaMatrix & A)
+template<bool doProfiling>
+void TCuda<doProfiling>::ReluDerivative(TCudaMatrix & B,
+                                        const TCudaMatrix & A)
 {
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(B);
    cudaStream_t s = A.GetComputeStream();
+   tick();
    ::TMVA::DNN::Cuda::ReluDerivative<<<gridDims, blockDims, 0, s>>>(
        B.GetDataPointer(),
        A.GetDataPointer(),
        (int) A.GetNrows(),
        (int) A.GetNcols());
+   tock(fTimings.TimeReluDerivative);
 }
 
 //______________________________________________________________________________
-void TCuda::Sigmoid(TCudaMatrix & A)
+template<bool doProfiling>
+void TCuda<doProfiling>::Sigmoid(TCudaMatrix & A)
 {
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(A);
    cudaStream_t s = A.GetComputeStream();
+   tick();
    ::TMVA::DNN::Cuda::Sigmoid<<<gridDims, blockDims, 0, s>>>(
        A.GetDataPointer(),
        (int) A.GetNrows(),
@@ -71,115 +84,149 @@ void TCuda::Sigmoid(TCudaMatrix & A)
 }
 
 //______________________________________________________________________________
-void TCuda::SigmoidDerivative(TCudaMatrix & B, const TCudaMatrix & A)
+template<bool doProfiling>
+void TCuda<doProfiling>::SigmoidDerivative(TCudaMatrix & B,
+                                           const TCudaMatrix & A)
 {
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(B);
    cudaStream_t s = A.GetComputeStream();
+   tick();
    ::TMVA::DNN::Cuda::SigmoidDerivative<<<gridDims, blockDims, 0, s>>>(
        B.GetDataPointer(),
        A.GetDataPointer(),
        (int) A.GetNrows(),
        (int) A.GetNcols());
+   tock(fTimings.TimeSigmoidDerivative);
 }
 
 //______________________________________________________________________________
-void TCuda::Tanh(TCudaMatrix & A)
+template<bool doProfiling>
+void TCuda<doProfiling>::Tanh(TCudaMatrix & A)
 {
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(A);
    cudaStream_t s = A.GetComputeStream();
+
+   tick();
    ::TMVA::DNN::Cuda::Tanh<<<gridDims, blockDims, 0, s>>>(
        A.GetDataPointer(),
        (int) A.GetNrows(),
        (int) A.GetNcols());
+   tock(fTimings.TimeTanh);
 }
 
 //______________________________________________________________________________
-void TCuda::TanhDerivative(TCudaMatrix & B, const TCudaMatrix & A)
+template<bool doProfiling>
+void TCuda<doProfiling>::TanhDerivative(TCudaMatrix & B,
+                                        const TCudaMatrix & A)
 {
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(B);
    cudaStream_t s = A.GetComputeStream();
+
+   tick();
    ::TMVA::DNN::Cuda::TanhDerivative<<<gridDims, blockDims, 0, s>>>(
        B.GetDataPointer(),
        A.GetDataPointer(),
        (int) A.GetNrows(),
        (int) A.GetNcols());
+   tock(fTimings.TimeTanhDerivative);
 }
 
 //______________________________________________________________________________
-void TCuda::SymmetricRelu(TCudaMatrix & A)
+template<bool doProfiling>
+void TCuda<doProfiling>::SymmetricRelu(TCudaMatrix & A)
 {
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(A);
    cudaStream_t s = A.GetComputeStream();
+   tick();
    ::TMVA::DNN::Cuda::SymmetricRelu<<<gridDims, blockDims, 0, s>>>(A.GetDataPointer(),
                                                              (int) A.GetNrows(),
                                                              (int) A.GetNcols());
+   tock(fTimings.TimeSymmetricRelu);
 }
 
 //______________________________________________________________________________
-void TCuda::SymmetricReluDerivative(TCudaMatrix & B, const TCudaMatrix & A)
+template<bool doProfiling>
+void TCuda<doProfiling>::SymmetricReluDerivative(TCudaMatrix & B,
+                                                 const TCudaMatrix & A)
 {
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(B);
    cudaStream_t s = A.GetComputeStream();
+   tick();
    ::TMVA::DNN::Cuda::SymmetricReluDerivative<<<gridDims, blockDims, 0, s>>>(
        B.GetDataPointer(),
        A.GetDataPointer(),
        (int) A.GetNrows(),
        (int) A.GetNcols());
+   tock(fTimings.TimeSymmetricReluDerivative);
 }
 
 //______________________________________________________________________________
-void TCuda::SoftSign(TCudaMatrix & A)
+template<bool doProfiling>
+void TCuda<doProfiling>::SoftSign(TCudaMatrix & A)
 {
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(A);
    cudaStream_t s = A.GetComputeStream();
+   tick();
    ::TMVA::DNN::Cuda::SoftSign<<<gridDims, blockDims, 0, s>>>(
        A.GetDataPointer(),
        (int) A.GetNrows(),
        (int) A.GetNcols());
+   tock(fTimings.TimeSoftSign);
 }
 
 //______________________________________________________________________________
-void TCuda::SoftSignDerivative(TCudaMatrix & B, const TCudaMatrix & A)
+template<bool doProfiling>
+void TCuda<doProfiling>::SoftSignDerivative(TCudaMatrix & B, const TCudaMatrix & A)
 {
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(B);
    cudaStream_t s = A.GetComputeStream();
+
+   tick();
    ::TMVA::DNN::Cuda::SoftSignDerivative<<<gridDims, blockDims, 0, s>>>(
        B.GetDataPointer(),
        A.GetDataPointer(),
        (int) A.GetNrows(),
        (int) A.GetNcols());
+   tock(fTimings.TimeSoftSignDerivative);
 }
 
 //______________________________________________________________________________
-void TCuda::Gauss(TCudaMatrix & A)
+template<bool doProfiling>
+void TCuda<doProfiling>::Gauss(TCudaMatrix & A)
 {
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(A);
    cudaStream_t s = A.GetComputeStream();
+
+   tick();
    ::TMVA::DNN::Cuda::Gauss<<<gridDims, blockDims, 0, s>>>(
        A.GetDataPointer(),
        (int) A.GetNrows(),
        (int) A.GetNcols());
+   tock(fTimings.TimeGauss);
 }
 
 //______________________________________________________________________________
-void TCuda::GaussDerivative(TCudaMatrix & B, const TCudaMatrix & A)
+template<bool doProfiling>
+void TCuda<doProfiling>::GaussDerivative(TCudaMatrix & B, const TCudaMatrix & A)
 {
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(B);
    cudaStream_t s = A.GetComputeStream();
+   tick();
    ::TMVA::DNN::Cuda::GaussDerivative<<<gridDims, blockDims, 0, s>>>(
        B.GetDataPointer(),
        A.GetDataPointer(),
        (int) A.GetNrows(),
        (int) A.GetNcols());
+   tock(fTimings.TimeGaussDerivative);
 }
 
 } // namespace DNN
