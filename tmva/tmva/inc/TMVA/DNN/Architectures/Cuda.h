@@ -332,7 +332,7 @@ inline void TCuda<true>::tock(CudaDouble_t &result)
    cudaEventSynchronize(fStop);
    float time;
    cudaEventElapsedTime(&time, fStart, fStop);
-   result = (Double_t) time;
+   result += (Double_t) time;
 }
 
 } // namespace DNN
