@@ -28,6 +28,9 @@
 
 namespace TMVA {
 namespace DNN  {
+
 template class TCuda<false>;
+template class TCuda<true>;
+
 } // namespace TMVA
 } // namespace DNN

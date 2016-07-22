@@ -76,11 +76,13 @@ void TCuda<doProfiling>::Sigmoid(TCudaMatrix & A)
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(A);
    cudaStream_t s = A.GetComputeStream();
+
    tick();
    ::TMVA::DNN::Cuda::Sigmoid<<<gridDims, blockDims, 0, s>>>(
        A.GetDataPointer(),
        (int) A.GetNrows(),
        (int) A.GetNcols());
+   tock(fTimings.TimeSigmoid);
 }
 
 //______________________________________________________________________________

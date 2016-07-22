@@ -56,6 +56,8 @@ private:
 
 public:
 
+    static const TTimings & GetTimings() {return fTimings;}
+
     using Scalar_t   = CudaDouble_t;
     using Matrix_t   = TCudaMatrix;
 
@@ -306,6 +308,11 @@ bool     TCuda<doProfiling>::fIsInitialized = false;
 
 template <bool doProfiling>
 TTimings TCuda<doProfiling>::fTimings{};
+
+template <bool doProfiling>
+cudaEvent_t TCuda<doProfiling>::fStart{};
+template <bool doProfiling>
+cudaEvent_t TCuda<doProfiling>::fStop{};
 
 template <>
 inline void TCuda<false>::tick() {}
