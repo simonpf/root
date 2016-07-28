@@ -87,3 +87,16 @@ if (CUDA_FOUND)
   TARGET_LINK_LIBRARIES(testDataLoaderCuda ${Libraries} dnn_cuda
     ${CUDA_CUBLAS_LIBRARIES})
 endif (CUDA_FOUND)
+
+#--- OpenCL tests -----------------
+
+find_package(OpenCL)
+if (OpenCL_FOUND AND clBLAS_DIR)
+  include_directories(${ROOT_INCLUDE_DIRS} ${OpenCL_INCLUDE_DIRS} ${clBLAS_DIR}/src)
+
+  # DNN - Matrix Arithmetic OpenCL
+  LINK_DIRECTORIES(/home/simon/src/clBLAS/library)
+  ROOT_EXECUTABLE(testMatrixArithmeticOpenCL TestMatrixArithmeticOpenCL.cxx
+                  LIBRARIES ${Libraries}  dnn_opencl ${OpenCL_LIBRARIES} clBLAS )
+  ROOT_ADD_TEST(TMVA-DNN-MatrixArithmeticOpenCL COMMAND testMatrixArithmeticOpenCL)
+endif(OpenCL_FOUND AND clBLAS_DIR)

@@ -49,6 +49,9 @@ set(dnn_cuda_files src/DNN/Architectures/Cuda/ActivationFunctions.cu
                    src/DNN/Architectures/Cuda/OutputFunctions.cu
                    src/DNN/Architectures/Cuda/Propagation.cu
                    src/DNN/Architectures/Cuda/Regularization.cu)
+set(dnn_opencl_files src/DNN/Architectures/OpenCL/Arithmetic.cxx
+                     src/DNN/Architectures/OpenCL/OpenCLMatrix.cxx
+                     src/DNN/Architectures/OpenCL/OpenCLDevice.cxx)
 
 #---Need to suffix each header name by TMVA/  -----------------
 foreach(hs headers1 headers2 headers3 headers4)
@@ -69,8 +72,18 @@ else (CUDA_FOUND)
   set(cuda_libraries)
 endif(CUDA_FOUND)
 
+#---Handle OpenCL dependent code. -----------------
+find_package(OpenCL)
+if (OpenCL_FOUND AND clBLAS_DIR)
+  include_directories(${ROOT_INCLUDE_DIRS} ${clBLAS_DIR}/src)
+  add_library(dnn_opencl ${dnn_opencl_files})
+  set(opencl_libraries dnn_opencl ${OpenCL_LIBRARIES})
+else (OpenCL_FOUND AND clBLAS_FOUND)
+  set(opencl_libraries)
+endif(OpenCL_FOUND AND clBLAS_DIR)
+
 root_linker_library(TMVA *.cxx G__TMVA.cxx ${dnn_files}
-                    LIBRARIES Core ${cuda_libraries}
+                    LIBRARIES Core ${cuda_libraries} ${opencl_libraries}
                     DEPENDENCIES RIO Hist Tree TreePlayer MLP Minuit XMLIO)
 
 install(DIRECTORY inc/TMVA/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/TMVA
