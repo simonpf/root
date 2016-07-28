@@ -26,17 +26,18 @@ namespace DNN  {
 template<bool doProfiling>
 CudaDouble_t TCuda<doProfiling>::L1Regularization(const TCudaMatrix & A)
 {
-    dim3 blockDims = TDevice::BlockDims();
-    dim3 gridDims  = TDevice::GridDims(A);
-    cudaStream_t s = A.GetComputeStream();
+   dim3 blockDims = TDevice::BlockDims();
+   dim3 gridDims  = TDevice::GridDims(A);
+   cudaStream_t s = A.GetComputeStream();
 
-    tick();
-    TCudaMatrix::ResetDeviceReturn();
-    ::TMVA::DNN::Cuda::AbsoluteSum<<<gridDims, blockDims, 0, s>>>(
-        TCudaMatrix::GetDeviceReturnPointer(),
-        A.GetDataPointer(),
-        (int) A.GetNrows(),
-        (int) A.GetNcols());
+   tick();
+   TCudaMatrix::ResetDeviceReturn();
+   ::TMVA::DNN::Cuda::AbsoluteSum<<<gridDims, blockDims, 0, s>>>(
+       TCudaMatrix::GetDeviceReturnPointer(),
+       A.GetDataPointer(),
+       (int) A.GetNrows(),
+       (int) A.GetNcols());
+   CudaDouble_t result = TCudaMatrix::GetDeviceReturn();
    tock(fTimings.TimeL1Regularization);
 
    return result;
@@ -51,9 +52,13 @@ void TCuda<doProfiling>::AddL1RegularizationGradients(TCudaMatrix & B,
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(B);
    cudaStream_t s = A.GetComputeStream();
-
    tick();
    ::TMVA::DNN::Cuda::AddL1RegularizationGradients<<<gridDims, blockDims, 0, s>>>(
+       B.GetDataPointer(),
+       A.GetDataPointer(),
+       weightDecay,
+       (int) A.GetNrows(),
+       (int) A.GetNcols());
    tock(fTimings.TimeAddL1RegularizationGradients);
 }
 
@@ -90,6 +95,11 @@ void TCuda<doProfiling>::AddL2RegularizationGradients(TCudaMatrix & B,
 
    tick();
    ::TMVA::DNN::Cuda::AddL2RegularizationGradients<<<gridDims, blockDims, 0, s>>>(
+       B.GetDataPointer(),
+       A.GetDataPointer(),
+       weightDecay,
+       (int) A.GetNrows(),
+       (int) A.GetNcols());
    tock(fTimings.TimeAddL2RegularizationGradients);
 }
 

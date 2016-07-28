@@ -53,9 +53,12 @@ void TCuda<doProfiling>::AddRowWise(TCudaMatrix &Weights,
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(Weights);
    cudaStream_t s = Weights.GetComputeStream();
-
    tick();
    ::TMVA::DNN::Cuda::AddRowWise<<<gridDims, blockDims, 0, s>>>(
+       Weights.GetDataPointer(),
+       theta.GetDataPointer(),
+       Weights.GetNrows(),
+       Weights.GetNcols());
    tock(fTimings.TimeAddRowWise);
 }
 

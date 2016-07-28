@@ -9,10 +9,10 @@
  * For the list of contributors see $ROOTSYS/README/CREDITS.             *
  *************************************************************************/
 
-//////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////
 // Implementation of the loss functions for the TCuda implementation //
-// of the low-level interface.                                      //
-//////////////////////////////////////////////////////////////////////
+// of the low-level interface.                                       //
+///////////////////////////////////////////////////////////////////////
 
 #include "TMVA/DNN/Architectures/Cuda.h"
 #include "TMVA/DNN/Architectures/Cuda/Device.h"
@@ -28,18 +28,19 @@ template<bool doProfiling>
 CudaDouble_t TCuda<doProfiling>::MeanSquaredError(const TCudaMatrix & Y,
                                                   const TCudaMatrix & output)
 {
-    dim3 blockDims = TDevice::BlockDims();
-    dim3 gridDims  = TDevice::GridDims(Y);
-    cudaStream_t s = Y.GetComputeStream();
+   dim3 blockDims = TDevice::BlockDims();
+   dim3 gridDims  = TDevice::GridDims(Y);
+   cudaStream_t s = Y.GetComputeStream();
 
-    tick();
-    TCudaMatrix::ResetDeviceReturn();
-    ::TMVA::DNN::Cuda::MeanSquaredError<<<gridDims, blockDims, 0, s>>>(
-        TCudaMatrix::GetDeviceReturnPointer(),
-        Y.GetDataPointer(),
-        output.GetDataPointer(),
-        (int) Y.GetNrows(),
-        (int) Y.GetNcols());
+   tick();
+
+   TCudaMatrix::ResetDeviceReturn();
+   ::TMVA::DNN::Cuda::MeanSquaredError<<<gridDims, blockDims, 0, s>>>(
+       TCudaMatrix::GetDeviceReturnPointer(),
+       Y.GetDataPointer(),
+       output.GetDataPointer(),
+       (int) Y.GetNrows(),
+       (int) Y.GetNcols());
    CudaDouble_t result = TCudaMatrix::GetDeviceReturn();
    tock(fTimings.TimeMeanSquaredError);
 
@@ -55,8 +56,14 @@ void TCuda<doProfiling>::MeanSquaredErrorGradients(TCudaMatrix & dY,
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(Y);
    cudaStream_t s = Y.GetComputeStream();
+
    tick();
    ::TMVA::DNN::Cuda::MeanSquaredErrorGradients<<<gridDims, blockDims, 0, s>>>(
+       dY.GetDataPointer(),
+       Y.GetDataPointer(),
+       output.GetDataPointer(),
+       (int) Y.GetNrows(),
+       (int) Y.GetNcols());
    tock(fTimings.TimeMeanSquaredErrorGradients);
 }
 
@@ -72,6 +79,11 @@ CudaDouble_t TCuda<doProfiling>::CrossEntropy(const TCudaMatrix & Y,
 
    tick();
    ::TMVA::DNN::Cuda::CrossEntropy<<<gridDims, blockDims, 0, s>>>(
+       TCudaMatrix::GetDeviceReturnPointer(),
+       Y.GetDataPointer(),
+       output.GetDataPointer(),
+       (int) Y.GetNrows(),
+       (int) Y.GetNcols());
    CudaDouble_t result = TCudaMatrix::GetDeviceReturn();
    tock(fTimings.TimeCrossEntropy);
 
@@ -87,6 +99,7 @@ void TCuda<doProfiling>::CrossEntropyGradients(TCudaMatrix & dY,
    dim3 blockDims = TDevice::BlockDims();
    dim3 gridDims  = TDevice::GridDims(Y);
    cudaStream_t s = Y.GetComputeStream();
+
    tick();
    ::TMVA::DNN::Cuda::CrossEntropyGradients<<<gridDims, blockDims, 0, s>>>(
        dY.GetDataPointer(),

@@ -24,9 +24,9 @@ int main()
 {
     std::cout << "Testing CUDA Matrix Arithmetic:" << std::endl;
 
-    Double_t error = testMultiplication<TCuda>(10);
+    Double_t error = testMultiplication<TCuda<false>>(10);
     std::cout << "Multiplication: " << "Max. rel. error: " << error << std::endl;
 
-    error = testSumColumns<TCuda>(1);
+    error = testSumColumns<TCuda<false>>(1);
     std::cout << "Column Sum:     " << "Max. rel. error: " << error << std::endl;
 }

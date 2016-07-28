@@ -67,26 +67,26 @@ private:
     Scalar_t fMinimumError; ///< The minimum loss achieved on the training set during the current traning session.
 
 public:
-    tgradientdescent();
-    tgradientdescent(scalar_t learningrate,
+    TGradientDescent();
+    TGradientDescent(Scalar_t learningrate,
                      size_t convergencesteps,
                      size_t testinterval);
     /*! reset minimizer object to initial state. does nothing for this minimizer. */
     void reset() {};
     /*! train the given net using the given training input data (events), training
       output data (labels), test input data (events), test output data (labels). */
-    template <typename data_t, typename net_t>
-        scalar_t train(const data_t & trainingdatain,
-                       size_t ntrainingsamples,
-                       const data_t & testdatain,
-                       size_t ntestsamples,
-                       net_t & net);
+    template <typename data_t, typename Net_t>
+        Scalar_t Train(const data_t & trainingData,
+                       size_t nTrainingSamples,
+                       const data_t & testData,
+                       size_t nTestSamples,
+                       Net_t & net);
     /*! perform a single optimization step on a given batch. propagates the input
       matrix foward through the net, evaluates the loss and propagates the gradients
       backward through the net. the computed gradients are scaled by the learning
       rate \f$\alpha\f$ and subtracted from the weights and bias values of each
       layer. */
-    template <typename net_t>
+    template <typename Net_t>
     void Step(Net_t &net,
               Matrix_t &input,
               const Matrix_t &output);
@@ -117,6 +117,8 @@ public:
     void SetConvergenceSteps(size_t steps) {fConvergenceSteps = steps;}
     void SetTestInterval(size_t interval)  {fTestInterval = interval;}
     void SetLearningRate(Scalar_t rate)    {fLearningRate = rate;}
+
+    void Reset();
 };
 
 //______________________________________________________________________________
@@ -290,6 +292,15 @@ bool inline TGradientDescent<Architecture_t>::HasConverged()
    }
 
    return (fConvergenceCount >= fConvergenceSteps);
+}
+
+//______________________________________________________________________________
+template<typename Architecture_t>
+void inline TGradientDescent<Architecture_t>::Reset()
+{
+   fStepCount        = 0;
+   fConvergenceCount = 0;
+   fMinimumError     = 1e100;
 }
 
 } // namespace DNN

@@ -780,7 +780,7 @@ void TMVA::MethodDNN::TrainGPU()
          }
          Log () << kINFO << Endl;
 
-         using DataLoader_t = typename DNN::TCuda::DataLoader_t<DNN::TMVAInput_t>;
+         using DataLoader_t = typename DNN::TCuda<false>::DataLoader_t<DNN::TMVAInput_t>;
          DataLoader_t trainingData(GetEventCollection(Types::kTraining),
                                    nTrainingSamples,
                                    trainNet.GetBatchSize(),
