@@ -50,6 +50,9 @@ set(dnn_cuda_files src/DNN/Architectures/Cuda/ActivationFunctions.cu
                    src/DNN/Architectures/Cuda/Propagation.cu
                    src/DNN/Architectures/Cuda/Regularization.cu)
 set(dnn_opencl_files src/DNN/Architectures/OpenCL/Arithmetic.cxx
+                     src/DNN/Architectures/OpenCL/ActivationFunctions.cxx
+                     src/DNN/Architectures/OpenCL/LossFunctions.cxx
+                     src/DNN/Architectures/OpenCL/Regularization.cxx
                      src/DNN/Architectures/OpenCL/OpenCLMatrix.cxx
                      src/DNN/Architectures/OpenCL/OpenCLDevice.cxx)
 
@@ -77,6 +80,8 @@ find_package(OpenCL)
 if (OpenCL_FOUND AND clBLAS_DIR)
   include_directories(${ROOT_INCLUDE_DIRS} ${clBLAS_DIR}/src)
   add_library(dnn_opencl ${dnn_opencl_files})
+  set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/src/DNN/Architectures/OpenCL/Kernels.cl)
+  target_compile_definitions(dnn_opencl PRIVATE -D__KERNEL_FILE__=${KERNEL_FILE})
   set(opencl_libraries dnn_opencl ${OpenCL_LIBRARIES})
 else (OpenCL_FOUND AND clBLAS_FOUND)
   set(opencl_libraries)

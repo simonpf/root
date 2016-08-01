@@ -22,8 +22,6 @@
 namespace TMVA {
 namespace DNN  {
 
-static const cl_double M[4] = { 1, 2, 3, 4};
-
 //____________________________________________________________________________
 void TOpenCL::Multiply(TOpenCLMatrix & C,
                        const TOpenCLMatrix & A,
@@ -44,6 +42,7 @@ void TOpenCL::Multiply(TOpenCLMatrix & C,
                      B.GetElementPointer(), 0, k, 0.0,
                      C.GetElementPointer(), 0, m,
                      1, queue, 0, NULL, &event);
+   A.GetDevice().HandleError(error);
 }
 
 //____________________________________________________________________________
@@ -66,6 +65,7 @@ void TOpenCL::MultiplyTranspose(TOpenCLMatrix & C,
                      B.GetElementPointer(), 0, n, 0.0,
                      C.GetElementPointer(), 0, m,
                      1, queue, 0, NULL, &event);
+   A.GetDevice().HandleError(error);
 }
 
 //____________________________________________________________________________
@@ -88,35 +88,16 @@ void TOpenCL::TransposeMultiply(TOpenCLMatrix & C,
                      B.GetElementPointer(), 0, k, 0.0,
                      C.GetElementPointer(), 0, m,
                      1, queue, 0, NULL, &event);
+   A.GetDevice().HandleError(error);
 }
 
 //____________________________________________________________________________
 void TOpenCL::Hadamard(TOpenCLMatrix & B,
                        const TOpenCLMatrix & A)
 {
-   TOpenCLDevice &device = B.GetDevice();
-
-   std::fstream file("/home/simon/src/root_clean_clean/tmva/tmva/src/DNN/Architectures/OpenCL/Kernels/Hadamard.cl");
-   std::string source(std::istreambuf_iterator<char>(file),
-                      std::istreambuf_iterator<char>{});
-
    cl_int error;
-   const char * sourceString = source.c_str();
-   size_t       sourceSize   = source.size();
-
-   cl_program program = clCreateProgramWithSource(device.GetContext(),
-                                                  1, &sourceString, &sourceSize,
-                                                  &error);
-   device.HandleError(error);
-   error = clBuildProgram(program, 1, device.GetDeviceIdPointer(),
-                          nullptr, nullptr, nullptr);
-   device.HandleError(error);
-   if (error != CL_SUCCESS) {
-      device.PrintBuildError(program);
-   }
-
-   cl_kernel kernel = clCreateKernel(program, "hadamard", &error);
-   device.HandleError(error);
+   TOpenCLDevice &device    = B.GetDevice();
+   cl_kernel kernel = device.GetKernel(EOpenCLKernel::kHadamard);
 
    cl_mem Ad = A.GetElementPointer();
    cl_mem Bd = B.GetElementPointer();
@@ -141,6 +122,39 @@ void TOpenCL::Hadamard(TOpenCLMatrix & B,
                           0, nullptr, nullptr);
 }
 
+//____________________________________________________________________________
+void TOpenCL::SumColumns(TOpenCLMatrix & B,
+                         const TOpenCLMatrix & A)
+{
+   cl_int error;
+   TOpenCLDevice &device = B.GetDevice();
+   cl_kernel kernel = device.GetKernel(EOpenCLKernel::kSumColumns);
+
+   cl_mem Ad = A.GetElementPointer();
+   cl_mem Bd = B.GetElementPointer();
+  int m     = (int) A.GetNrows();
+   int n     = (int) A.GetNcols();
+
+   error = clSetKernelArg(kernel, 0, sizeof(OpenCLDouble_t *), &Bd);
+   device.HandleError(error);
+   error = clSetKernelArg(kernel, 1, sizeof(OpenCLDouble_t *), &Ad);
+   device.HandleError(error);
+   error = clSetKernelArg(kernel, 2, sizeof(int), &m);
+   device.HandleError(error);
+   error = clSetKernelArg(kernel, 3, sizeof(int), &n);
+   device.HandleError(error);
+   error = clSetKernelArg(kernel, 4,
+                          TOpenCLDevice::localSize * sizeof(OpenCLDouble_t),
+                          nullptr);
+   device.HandleError(error);
+
+   size_t globalWorkSize[2] = {A.GetNcols(), TOpenCLDevice::localSize};
+   size_t localWorkSize[2]  = {1, TOpenCLDevice::localSize};
+
+   clEnqueueNDRangeKernel(device.GetQueue(), kernel,
+                          2, nullptr, globalWorkSize, localWorkSize,
+                          0, nullptr, nullptr);
+}
 
 } // namespace DNN
 } // namespace TMVA

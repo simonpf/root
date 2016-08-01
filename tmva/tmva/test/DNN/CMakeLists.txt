@@ -99,4 +99,18 @@ if (OpenCL_FOUND AND clBLAS_DIR)
   ROOT_EXECUTABLE(testMatrixArithmeticOpenCL TestMatrixArithmeticOpenCL.cxx
                   LIBRARIES ${Libraries}  dnn_opencl ${OpenCL_LIBRARIES} clBLAS )
   ROOT_ADD_TEST(TMVA-DNN-MatrixArithmeticOpenCL COMMAND testMatrixArithmeticOpenCL)
+
+  # DNN - Loss Functions OpenCL
+  ROOT_EXECUTABLE(testLossFunctionsOpenCL TestLossFunctionsOpenCL.cxx
+                  LIBRARIES ${Libraries}  dnn_opencl ${OpenCL_LIBRARIES} clBLAS )
+  ROOT_ADD_TEST(TMVA-DNN-LossFunctionsOpenCL COMMAND testLossFunctionsOpenCL)
+
+  # DNN - Activation Functions OpenCL
+  ROOT_EXECUTABLE(testActivationFunctionsOpenCL TestActivationFunctionsOpenCL.cxx
+                  LIBRARIES ${Libraries}  dnn_opencl ${OpenCL_LIBRARIES} clBLAS )
+  ROOT_ADD_TEST(TMVA-DNN-ActivationFunctionsOpenCL COMMAND testActivationFunctionsOpenCL)
+  # DNN - Derivatives OpenCL
+  ROOT_EXECUTABLE(testDerivativesOpenCL TestDerivativesOpenCL.cxx
+                  LIBRARIES ${Libraries}  dnn_opencl ${OpenCL_LIBRARIES} clBLAS )
+  ROOT_ADD_TEST(TMVA-DNN-DerivativesOpenCL COMMAND testDerivativesOpenCL)
 endif(OpenCL_FOUND AND clBLAS_DIR)

@@ -71,7 +71,7 @@ template<typename Architecture, typename F, typename dF>
         Scalar_t dy_num = (y1 - y0) / (2.0 * dx);
 
         Scalar_t error = 0.0;
-        if (std::fabs(dy) > 0)
+        if (std::fabs(dy) > 1e-12)
         {
             error = std::fabs((dy_num - dy) / dy);
         }

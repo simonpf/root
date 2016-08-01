@@ -147,10 +147,10 @@ public:
    ///@{
 
    static OpenCLDouble_t MeanSquaredError(const TOpenCLMatrix &Y,
-                                        const TOpenCLMatrix &output);
+                                        const TOpenCLMatrix & output);
    static void MeanSquaredErrorGradients(TOpenCLMatrix & dY,
-                                         const TOpenCLMatrix &Y,
-                                         const TOpenCLMatrix &output);
+                                         const TOpenCLMatrix & Y,
+                                         const TOpenCLMatrix & output);
 
     /** Sigmoid transformation is implicitly applied, thus \p output should
      *  hold the linear activations of the last layer in the net. */

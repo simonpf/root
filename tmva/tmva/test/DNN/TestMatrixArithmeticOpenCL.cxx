@@ -22,8 +22,11 @@ using namespace TMVA::DNN;
 
 int main()
 {
-    std::cout << "Testing OpenCL Matrix Arithmetic:" << std::endl;
+   std::cout << "Testing OpenCL Matrix Arithmetic:" << std::endl;
 
-    Double_t error = testMultiplication<TOpenCL>(10);
-    std::cout << "Multiplication: " << "Max. rel. error: " << error << std::endl;
+   Double_t error = testMultiplication<TOpenCL>(10);
+   std::cout << "Multiplication: " << "Max. rel. error: " << error << std::endl;
+
+   error = testSumColumns<TOpenCL>(10);
+   std::cout << "Column Sum:     " << "Max. rel. error: " << error << std::endl;
 }

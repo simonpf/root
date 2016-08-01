@@ -21,24 +21,58 @@
 #include <vector>
 
 namespace TMVA {
-namespace DNN {
+namespace DNN  {
 
 class TOpenCLMatrix;
+
+enum class EOpenCLKernel : int {
+   kHadamard                  = 0,
+   kSumColumns                = 1,
+   kSumVector                 = 2,
+   kSquaredErrorColumns       = 3,
+   kMeanSquaredErrorGradients = 4,
+   kCrossEntropyColumns       = 5,
+   kCrossEntropyGradients     = 6,
+
+   // Activation Functions.
+   kIdentityDerivative        = 7,
+   kRelu                      = 8,
+   kReluDerivative            = 9,
+   kSigmoid                   = 10,
+   kSigmoidDerivative         = 11,
+   kTanh                      = 12,
+   kTanhDerivative            = 13,
+   kSymmetricRelu             = 14,
+   kSymmetricReluDerivative   = 15,
+   kSoftSign                  = 16,
+   kSoftSignDerivative        = 17,
+   kGauss                     = 18,
+   kGaussDerivative           = 19,
+
+   // Regularization
+   kL1Regularization             = 20,
+   kAddL1RegularizationGradients = 21,
+   kL2Regularization             = 22,
+   kAddL2RegularizationGradients = 23,
+};
 
 class TOpenCLDevice
 {
 private:
-
-   static constexpr size_t localSizeX = 16;
-   static constexpr size_t localSizeY = 16;
 
    cl_platform_id        fPlatform      = 0;
    cl_device_id          fDeviceId      = 0;
    cl_context_properties fProperties[3] = {CL_CONTEXT_PLATFORM, 0, 0};
    cl_context            fContext       = 0;
    cl_command_queue      fQueue         = 0;
+   cl_program            fProgram;
+   cl_kernel             fKernels[24];
 
 public:
+
+   static constexpr size_t localSizeX = 16;
+   static constexpr size_t localSizeY = 16;
+   static constexpr size_t localSize  = localSizeX * localSizeY;
 
    TOpenCLDevice();
    inline void HandleError(cl_int error) const;
@@ -50,11 +84,13 @@ public:
    cl_device_id       GetDeviceId()        {return   fDeviceId;}
    cl_device_id *     GetDeviceIdPointer() {return & fDeviceId;}
 
+   inline const cl_kernel & GetKernel(EOpenCLKernel kernel);
    inline void GetWorkSizes(size_t * globalWork, size_t * localWork,
                             size_t nCols, size_t nRows) const;
 
 private:
 
+   void CompileKernels();
    inline const char * GetErrorString(cl_int error) const;
 
 };
@@ -153,6 +189,11 @@ inline const char * TOpenCLDevice::GetErrorString(cl_int error) const
    case -1005: return "CL_D3D10_RESOURCE_NOT_ACQUIRED_KHR";
    default: return "Unknown OpenCL error";
    }
+}
+
+inline const cl_kernel & TOpenCLDevice::GetKernel(EOpenCLKernel kernel)
+{
+   return fKernels[static_cast<int>(kernel)];
 }
 
 inline void TOpenCLDevice::GetWorkSizes(size_t *globalWork,

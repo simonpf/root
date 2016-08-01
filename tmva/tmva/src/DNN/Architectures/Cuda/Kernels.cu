@@ -322,7 +322,7 @@ __global__ void TanhDerivative(CudaDouble_t * B,
 
    if ((i < m) && (j < n)) {
       CudaDouble_t t = ::tanh(A[index]);
-      B[index] = 1 - t*t;
+      B[index] = 1.0 - t*t;
    }
 }
 
@@ -584,8 +584,8 @@ __global__ void ReduceMatrix(CudaDouble_t *result,
 
 //____________________________________________________________________________
 __global__ void SumColumns(CudaDouble_t *B,
-                            const CudaDouble_t *A,
-                            int m, int n)
+                           const CudaDouble_t *A,
+                           int m, int n)
 {
    int i = blockDim.y * blockIdx.y + threadIdx.y;
    int j = blockDim.x * blockIdx.x + threadIdx.x;

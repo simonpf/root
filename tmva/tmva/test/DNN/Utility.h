@@ -91,7 +91,8 @@ namespace DNN
         {
             for (size_t j = 0; j < n; j++)
             {
-                X(i,j) = Y(i,j);
+                double t = Y(i,j);
+                X(i,j) = t;
             }
         }
     }
