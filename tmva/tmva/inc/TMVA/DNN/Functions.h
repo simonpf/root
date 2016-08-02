@@ -259,6 +259,33 @@ inline void initialize(typename Architecture_t::Matrix_t & A,
    }
 }
 
+//______________________________________________________________________________
+//
+// Initialization
+//______________________________________________________________________________
+
+template<typename Architecture_t>
+inline void Flops(EActivationFunction f)
+{
+   size_t flops;
+   switch(f) {
+   case EActivationFunction::Identity      : flops =  0;
+       break;
+   case EActivationFunction::Relu          : flops =  2;
+       break;
+   case EActivationFunction::Sigmoid       : flops = 36;
+       break;
+   case EActivationFunction::Tanh          : flops = 42;
+       break;
+   case EActivationFunction::SymmetricRelu : flops =  2;
+       break;
+   case EActivationFunction::SoftSign      : flops = 16;
+       break;
+   case EActivationFunction::Gauss         : flops = 26;
+       break;
+   }
+}
+
 } // namespace DNN
 } // namespace TMVA
 
