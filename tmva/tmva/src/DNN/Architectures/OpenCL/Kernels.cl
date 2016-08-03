@@ -15,6 +15,7 @@
 ///////////////////////////////////////////////////////////////////
 
 #pragma OPENCL EXTENSION cl_khr_fp64 : enable
+#include "clRNG/lfsr113.clh"
 
 //
 // Reduction Functions
@@ -93,6 +94,24 @@ __kernel void SumVector(__global double * result,
    }
 }
 
+//
+// Propagation
+//____________________________________________________________________________
+__kernel void AddRowWise(__global double * B,
+                         __global const double * A,
+                         int m)
+{
+   int globalIndexX = get_global_id(0);
+   int localIndexY  = get_local_id(1);
+   int localSizeY   = get_local_size(1);
+
+   int offset     = globalIndexX * m;
+
+   double sum = 0.0;
+   for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
+       B[i] += A[globalIndexX];
+   }
+}
 
 //
 // Loss Functions
@@ -404,8 +423,7 @@ __kernel void L1RegularizationColumns(__global const double * A,
 
    double sum = 0.0;
    for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
-      double err = fabs(A[i]);
-      sum += err * err;
+      sum += fabs(A[i]);
    }
    sdata[localIndexY] = sum;
 
@@ -454,6 +472,7 @@ __kernel void L2RegularizationColumns(__global const double * A,
    }
 }
 
+//____________________________________________________________________________
 __kernel void AddL2RegularizationGradients(__global double * B,
                                            __global const double * A,
                                            int m, double weightDecay)
@@ -466,6 +485,31 @@ __kernel void AddL2RegularizationGradients(__global double * B,
 
    for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
       B[i] += 2.0 * weightDecay * A[i];
+   }
+}
+
+//____________________________________________________________________________
+__kernel void Dropout(__global double * B,
+                      __global clrngLfsr113Stream * streams,
+                      int m, double dropoutProbability)
+{
+   int globalIndexX = get_global_id(0);
+   int globalIndex  = globalIndexX * get_global_size(1) + get_global_id(1);
+   int localIndexY  = get_local_id(1);
+   int localSizeY   = get_local_size(1);
+
+   int offset     = globalIndexX * m;
+
+   clrngLfsr113Stream privateStream;
+   clrngLfsr113CopyOverStreamsFromGlobal(1, &privateStream, streams + globalIndex);
+
+   for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
+      double random = clrngLfsr113RandomU01(&privateStream);
+      if (random < dropoutProbability) {
+         B[i] /= dropoutProbability;
+      } else {
+         B[i] = 0.0;
+      }
    }
 }
 

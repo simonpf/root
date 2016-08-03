@@ -17,8 +17,12 @@
 #ifndef TMVA_DNN_ARCHITECTURES_OPENCL_OPENCLDEVICE
 #define TMVA_DNN_ARCHITECTURES_OPENCL_OPENCLDEVICE
 
-#include "CL/cl.h"
+#define __CL_ENABLE_EXCEPTIONS
+#define __CL_VERSION_1_2
+
+#include "CL/cl.hpp"
 #include <vector>
+#include <tuple>
 
 namespace TMVA {
 namespace DNN  {
@@ -29,44 +33,50 @@ enum class EOpenCLKernel : int {
    kHadamard                  = 0,
    kSumColumns                = 1,
    kSumVector                 = 2,
-   kSquaredErrorColumns       = 3,
-   kMeanSquaredErrorGradients = 4,
-   kCrossEntropyColumns       = 5,
-   kCrossEntropyGradients     = 6,
+
+   // Propagation.
+   kAddRowWise                = 3,
+
+   // Loss Functions.
+   kSquaredErrorColumns       = 4,
+   kMeanSquaredErrorGradients = 5,
+   kCrossEntropyColumns       = 6,
+   kCrossEntropyGradients     = 7,
 
    // Activation Functions.
-   kIdentityDerivative        = 7,
-   kRelu                      = 8,
-   kReluDerivative            = 9,
-   kSigmoid                   = 10,
-   kSigmoidDerivative         = 11,
-   kTanh                      = 12,
-   kTanhDerivative            = 13,
-   kSymmetricRelu             = 14,
-   kSymmetricReluDerivative   = 15,
-   kSoftSign                  = 16,
-   kSoftSignDerivative        = 17,
-   kGauss                     = 18,
-   kGaussDerivative           = 19,
+   kIdentityDerivative        = 8,
+   kRelu                      = 9,
+   kReluDerivative            = 10,
+   kSigmoid                   = 11,
+   kSigmoidDerivative         = 12,
+   kTanh                      = 13,
+   kTanhDerivative            = 14,
+   kSymmetricRelu             = 15,
+   kSymmetricReluDerivative   = 16,
+   kSoftSign                  = 17,
+   kSoftSignDerivative        = 18,
+   kGauss                     = 19,
+   kGaussDerivative           = 20,
 
    // Regularization
-   kL1Regularization             = 20,
-   kAddL1RegularizationGradients = 21,
-   kL2Regularization             = 22,
-   kAddL2RegularizationGradients = 23,
+   kL1Regularization             = 21,
+   kAddL1RegularizationGradients = 22,
+   kL2Regularization             = 23,
+   kAddL2RegularizationGradients = 24,
+
+   // Dropout
+   kDropout = 25
 };
 
 class TOpenCLDevice
 {
 private:
 
-   cl_platform_id        fPlatform      = 0;
-   cl_device_id          fDeviceId      = 0;
-   cl_context_properties fProperties[3] = {CL_CONTEXT_PLATFORM, 0, 0};
-   cl_context            fContext       = 0;
-   cl_command_queue      fQueue         = 0;
-   cl_program            fProgram;
-   cl_kernel             fKernels[24];
+   cl::Device       fDevice;
+   cl::Context      fContext       = 0;
+   cl::CommandQueue fQueue         = 0;
+   cl::Program      fProgram;
+   cl::Kernel       fKernels[26];
 
 public:
 
@@ -76,22 +86,40 @@ public:
 
    TOpenCLDevice();
    inline void HandleError(cl_int error) const;
-   inline void PrintBuildError(cl_program program) const;
+   inline const char * GetErrorString(cl_int error) const;
+   inline void PrintBuildError(cl::Program program) const;
 
-   cl_context         GetContext() const   {return   fContext;}
-   cl_command_queue   GetQueue()           {return   fQueue;}
-   cl_command_queue * GetQueuePointer()    {return & fQueue;}
-   cl_device_id       GetDeviceId()        {return   fDeviceId;}
-   cl_device_id *     GetDeviceIdPointer() {return & fDeviceId;}
+   cl::Context      GetContext() const {return fContext;}
+   cl::CommandQueue GetQueue()   const {return fQueue;}
+   cl::Device       GetDevice()  const {return fDevice;}
 
-   inline const cl_kernel & GetKernel(EOpenCLKernel kernel);
-   inline void GetWorkSizes(size_t * globalWork, size_t * localWork,
-                            size_t nCols, size_t nRows) const;
+   template<typename ...Args>
+   inline void EnqueueKernel(EOpenCLKernel kernelEnum,
+                             cl::NDRange globalSize,
+                             cl::NDRange localSize,
+                             Args ...args);
 
 private:
 
    void CompileKernels();
-   inline const char * GetErrorString(cl_int error) const;
+
+
+   template<
+      typename TupleType,
+      int size = std::tuple_size<TupleType>::value,
+      int index = 0
+   >
+   struct SetArguments {
+      static inline void execute(cl::Kernel kernel, const TupleType &arguments) {
+          kernel.setArg(index, std::get<index>(arguments));
+          SetArguments<TupleType, size, index+1>::execute(kernel, arguments);
+       }
+   };
+
+   template<typename TupleType, int size>
+   struct SetArguments<TupleType, size, size> {
+      static inline void execute(cl::Kernel, const TupleType &) {}
+   };
 
 };
 
@@ -103,15 +131,10 @@ inline void TOpenCLDevice::HandleError(cl_int error) const
    }
 }
 
-inline void TOpenCLDevice::PrintBuildError(cl_program program) const
+inline void TOpenCLDevice::PrintBuildError(cl::Program program) const
 {
-   size_t len;
-   clGetProgramBuildInfo(program, fDeviceId, CL_PROGRAM_BUILD_LOG,
-                         0, nullptr, &len);
-   std::vector<char> buffer(len);
-   clGetProgramBuildInfo(program, fDeviceId, CL_PROGRAM_BUILD_LOG, len,
-                         buffer.data(), nullptr);
-   std::cout << buffer.data() << std::endl;
+   std::string log = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(fDevice);
+   std::cout << log << std::endl;
 }
 
 inline const char * TOpenCLDevice::GetErrorString(cl_int error) const
@@ -191,30 +214,17 @@ inline const char * TOpenCLDevice::GetErrorString(cl_int error) const
    }
 }
 
-inline const cl_kernel & TOpenCLDevice::GetKernel(EOpenCLKernel kernel)
+template <class ...Args>
+inline void TOpenCLDevice::EnqueueKernel(EOpenCLKernel kernelEnum,
+                                         cl::NDRange global,
+                                         cl::NDRange local,
+                                         Args ...args)
 {
-   return fKernels[static_cast<int>(kernel)];
-}
+   cl::Kernel kernel = fKernels[static_cast<int>(kernelEnum)];
+   auto arguments = std::make_tuple(args...);
 
-inline void TOpenCLDevice::GetWorkSizes(size_t *globalWork,
-                                        size_t *localWork,
-                                        size_t nRows, size_t nCols) const
-{
-    localWork[0] = localSizeX;
-    localWork[1] = localSizeY;
-
-    size_t gridDimX = nCols / localSizeX;
-    if (nCols % localSizeX != 0) {
-        gridDimX += 1;
-    }
-
-    size_t gridDimY = nRows / localSizeY;
-    if (nRows % localSizeY != 0) {
-        gridDimY += 1;
-    }
-
-    globalWork[0] = localSizeX * gridDimX;
-    globalWork[1] = localSizeY * gridDimY;
+   SetArguments<decltype(arguments)>::execute(kernel, arguments);
+   fQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, local);
 }
 
 } // namespace DNN

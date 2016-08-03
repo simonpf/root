@@ -1,4 +1,5 @@
-// @(#)root/tmva/tmva/dnn:$Id$ // Author: Simon Pfreundschuh 13/07/16
+// @(#)root/tmva/tmva/dnn:$Id$
+// Author: Simon Pfreundschuh 13/07/16
 
 /*************************************************************************
  * Copyright (C) 2016, Simon Pfreundschuh                                *

@@ -22,21 +22,29 @@ using namespace TMVA::DNN;
 int main()
 {
 
-   TMatrixT<OpenCLDouble_t> A(10, 10), B(10, 10), C(10, 10);
-   randomMatrix(A);
-   randomMatrix(B);
+   TMatrixT<OpenCLDouble_t> A(1000, 1000), B(2000, 2000);
 
-   TOpenCLMatrix Ad(A), Bd(B), Cd(10, 10);
+   for (size_t i = 0; i < 1000; i++) {
+      for (size_t j = 0; j < 1000; j++) {
+         A(i,j) = 1.0;
+      }
+   }
 
-   C.Mult(A, B);
-   TOpenCL::Multiply(Cd, Ad, Bd);
+   for (size_t i = 0; i < 2000; i++) {
+      for (size_t j = 0; j < 2000; j++) {
+         B(i,j) = 1.0;
+      }
+   }
 
-   TMatrixT<OpenCLDouble_t> Cr(Cd);
+   TOpenCLMatrix Ad(A), Bd(B);
 
-   C.Print();
-   Cr.Print();
+   TOpenCL::Dropout(Ad, 0.5);
+   TOpenCL::Dropout(Bd, 0.5);
 
-   std::cout << "Multiplication error:" << maximumRelativeError(Cr, C)
-             << std::endl;
+   TMatrixT<OpenCLDouble_t> Ar(Ad);
+   TMatrixT<OpenCLDouble_t> Br(Bd);
+
+   std::cout << "A: " << Ar.Sum() / (1000.0 * 1000.0) << std::endl;
+   std::cout << "B: " << Br.Sum() / (2000.0 * 2000.0) << std::endl;
 
 }

@@ -23,6 +23,7 @@
 #include "CL/cl.h"
 #include "OpenCLDevice.h"
 #include "TMatrix.h"
+#include "clRNG/lfsr113.h"
 
 namespace TMVA {
 namespace DNN  {
@@ -45,75 +46,80 @@ class TOpenCLDeviceReference
 private:
 
    TOpenCLDevice  & fDevice;
-   cl_mem           fElementPointer;
+   cl::Buffer       fElementBuffer;
    size_t           fOffset;
 
 public:
 
-    TOpenCLDeviceReference(cl_mem elementPointer,
-                           TOpenCLDevice & device,
-                           size_t offset)
-    : fDevice(device), fElementPointer(elementPointer), fOffset(offset)
+   TOpenCLDeviceReference(cl::Buffer elementPointer,
+                          TOpenCLDevice & device,
+                          size_t offset)
+    : fDevice(device), fElementBuffer(elementPointer), fOffset(offset)
    {
-      cl_int error;
-      fDevice.HandleError(error);
+       // Nothing to do here.
    }
 
    operator OpenCLDouble_t()
    {
       OpenCLDouble_t buffer;
-      cl_int error;
-      error = clEnqueueReadBuffer(fDevice.GetQueue(), fElementPointer, CL_TRUE,
-                                  fOffset * sizeof(OpenCLDouble_t),
-                                  sizeof(OpenCLDouble_t), (void*) &buffer,
-                                  0, nullptr, nullptr);
-      fDevice.HandleError(error);
+      try {
+          fDevice.GetQueue().enqueueReadBuffer(fElementBuffer, CL_TRUE,
+                                               fOffset * sizeof(OpenCLDouble_t),
+                                               sizeof(OpenCLDouble_t),
+                                               (void *) &buffer);
+      } catch (cl::Error error) {
+          fDevice.HandleError(error.err());
+      }
       return buffer;
    }
 
    void operator=(OpenCLDouble_t value)
    {
       OpenCLDouble_t buffer = value;
-      cl_int error;
-      error = clEnqueueWriteBuffer(fDevice.GetQueue(), fElementPointer, CL_TRUE,
-                                   fOffset * sizeof(OpenCLDouble_t),
-                                   sizeof(OpenCLDouble_t), (void*) &buffer,
-                                   0, nullptr, nullptr);
-      fDevice.HandleError(error);
+      try {
+          fDevice.GetQueue().enqueueWriteBuffer(fElementBuffer, CL_TRUE,
+                                                fOffset * sizeof(OpenCLDouble_t),
+                                                sizeof(OpenCLDouble_t),
+                                                (void *) &buffer);
+      } catch (cl::Error error) {
+          fDevice.HandleError(error.err());
+      }
    }
 
    void operator+=(OpenCLDouble_t value)
    {
       OpenCLDouble_t buffer;
-      cl_int error;
-      error = clEnqueueReadBuffer(fDevice.GetQueue(), fElementPointer, CL_TRUE,
-                                  fOffset * sizeof(OpenCLDouble_t),
-                                  sizeof(OpenCLDouble_t), (void*) &buffer,
-                                  0, nullptr, nullptr);
-      fDevice.HandleError(error);
-      buffer += value;
-      error = clEnqueueWriteBuffer(fDevice.GetQueue(), fElementPointer, CL_TRUE,
-                                   fOffset * sizeof(OpenCLDouble_t),
-                                   sizeof(OpenCLDouble_t), (void*) &buffer,
-                                   0, nullptr, nullptr);
-      fDevice.HandleError(error);
+      try {
+          fDevice.GetQueue().enqueueReadBuffer(fElementBuffer, CL_TRUE,
+                                               fOffset * sizeof(OpenCLDouble_t),
+                                               sizeof(OpenCLDouble_t),
+                                               (void *) &buffer);
+          buffer += value;
+          fDevice.GetQueue().enqueueWriteBuffer(fElementBuffer, CL_TRUE,
+                                                fOffset * sizeof(OpenCLDouble_t),
+                                                sizeof(OpenCLDouble_t),
+                                                (void *) &buffer);
+      } catch (cl::Error error) {
+          fDevice.HandleError(error.err());
+      }
    }
 
    void operator-=(OpenCLDouble_t value)
    {
       OpenCLDouble_t buffer;
-      cl_int error;
-      error = clEnqueueReadBuffer(fDevice.GetQueue(), fElementPointer, CL_TRUE,
-                                  fOffset * sizeof(OpenCLDouble_t),
-                                  sizeof(OpenCLDouble_t), (void*) &buffer,
-                                  0, nullptr, nullptr);
-      fDevice.HandleError(error);
-      buffer -= value;
-      error = clEnqueueWriteBuffer(fDevice.GetQueue(), fElementPointer, CL_TRUE,
-                                   fOffset * sizeof(OpenCLDouble_t),
-                                   sizeof(OpenCLDouble_t), (void*) &buffer,
-                                   0, nullptr, nullptr);
-      fDevice.HandleError(error);
+      try {
+          fDevice.GetQueue().enqueueReadBuffer(fElementBuffer, CL_TRUE,
+                                               fOffset * sizeof(OpenCLDouble_t),
+                                               sizeof(OpenCLDouble_t),
+                                               (void *) &buffer);
+          buffer -= value;
+          fDevice.GetQueue().enqueueWriteBuffer(fElementBuffer, CL_TRUE,
+                                                fOffset * sizeof(OpenCLDouble_t),
+                                                sizeof(OpenCLDouble_t),
+                                                (void *) &buffer);
+      } catch (cl::Error error) {
+          fDevice.HandleError(error.err());
+      }
    }
 };
 
@@ -122,8 +128,10 @@ class TOpenCLMatrix
 
 private:
 
-   cl_mem        fElementPointer;
-   static        TOpenCLDevice fDevice;
+          cl::Buffer    fElementBuffer;
+   static TOpenCLDevice fDevice;
+   static cl::Buffer    fRandomStreams;
+   static size_t        fNStreams;
 
    size_t fNRows, fNCols, fNElements;
 
@@ -131,18 +139,30 @@ public:
 
    TOpenCLMatrix(size_t nRows, size_t nCols);
    TOpenCLMatrix(const TMatrixT<OpenCLDouble_t> & A);
+
+   TOpenCLMatrix(const TOpenCLMatrix &)             = default;
+   TOpenCLMatrix & operator=(const TOpenCLMatrix &) = delete;
+   ~TOpenCLMatrix()                                 = default;
+
    operator TMatrixT<OpenCLDouble_t>() const;
+   TOpenCLMatrix & operator=(const TMatrixT<OpenCLDouble_t> &);
 
    TOpenCLDeviceReference operator()(size_t i, size_t j) const
    {
-      return TOpenCLDeviceReference(fElementPointer, fDevice, j * fNRows + i);
+      return TOpenCLDeviceReference(fElementBuffer, fDevice, j * fNRows + i);
    }
 
-   size_t             GetNrows()           const {return fNRows;}
-   size_t             GetNcols()           const {return fNCols;}
-   cl_mem             GetElementPointer()  const {return fElementPointer;}
-   cl_command_queue   GetQueue()                 {return fDevice.GetQueue();}
-   TOpenCLDevice &    GetDevice()          const {return fDevice;}
+   size_t               GetNrows()               const {return fNRows;}
+   size_t               GetNcols()               const {return fNCols;}
+   size_t               GetNoElements()          const {return fNRows * fNCols;}
+   cl::Buffer           GetElementBuffer()       const {return fElementBuffer;}
+   cl::Buffer           GetRandomStreamBuffer()  const {return fRandomStreams;}
+   cl::CommandQueue     GetQueue()               const {return fDevice.GetQueue();}
+   TOpenCLDevice &      GetDevice()              const {return fDevice;}
+
+private:
+
+   inline void InitializeRandomStreams();
 
 };
 

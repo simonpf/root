@@ -51,9 +51,12 @@ set(dnn_cuda_files src/DNN/Architectures/Cuda/ActivationFunctions.cu
                    src/DNN/Architectures/Cuda/Regularization.cu)
 set(dnn_opencl_files src/DNN/Architectures/OpenCL/Arithmetic.cxx
                      src/DNN/Architectures/OpenCL/ActivationFunctions.cxx
+                     src/DNN/Architectures/OpenCL/Initialization.cxx
                      src/DNN/Architectures/OpenCL/LossFunctions.cxx
+                     src/DNN/Architectures/OpenCL/Propagation.cxx
                      src/DNN/Architectures/OpenCL/Regularization.cxx
                      src/DNN/Architectures/OpenCL/OpenCLMatrix.cxx
+                     src/DNN/Architectures/OpenCL/Dropout.cxx
                      src/DNN/Architectures/OpenCL/OpenCLDevice.cxx)
 
 #---Need to suffix each header name by TMVA/  -----------------
@@ -77,15 +80,18 @@ endif(CUDA_FOUND)
 
 #---Handle OpenCL dependent code. -----------------
 find_package(OpenCL)
-if (OpenCL_FOUND AND clBLAS_DIR)
-  include_directories(${ROOT_INCLUDE_DIRS} ${clBLAS_DIR}/src)
+if (OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)
+  include_directories(${ROOT_INCLUDE_DIRS} ${clBLAS_DIR}/src ${clRNG_DIR}/src/include)
   add_library(dnn_opencl ${dnn_opencl_files})
   set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/src/DNN/Architectures/OpenCL/Kernels.cl)
+  set(KERNEL_INCLUDE ${clRNG_DIR}src/include)
+  MESSAGE(STATUS "KERNEL INCLUDE: " ${KERNEL_INCLUDE})
   target_compile_definitions(dnn_opencl PRIVATE -D__KERNEL_FILE__=${KERNEL_FILE})
+  target_compile_definitions(dnn_opencl PRIVATE -D__KERNEL_INCLUDE_DIRS__=${KERNEL_INCLUDE})
   set(opencl_libraries dnn_opencl ${OpenCL_LIBRARIES})
-else (OpenCL_FOUND AND clBLAS_FOUND)
+else (OpenCL_FOUND AND clBLAS_FOUND AND clRNG_DIR)
   set(opencl_libraries)
-endif(OpenCL_FOUND AND clBLAS_DIR)
+endif(OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)
 
 root_linker_library(TMVA *.cxx G__TMVA.cxx ${dnn_files}
                     LIBRARIES Core ${cuda_libraries} ${opencl_libraries}

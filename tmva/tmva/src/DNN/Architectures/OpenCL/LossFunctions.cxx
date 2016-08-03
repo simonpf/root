@@ -19,147 +19,86 @@
 namespace TMVA {
 namespace DNN  {
 
-inline OpenCLDouble_t ExecuteLossFunctionsKernel(cl_kernel kernel,
+inline OpenCLDouble_t ExecuteLossFunctionsKernel(EOpenCLKernel kernel,
                                                  const TOpenCLMatrix & Y,
                                                  const TOpenCLMatrix & output)
 {
-   cl_int error;
-   TOpenCLDevice &device = Y.GetDevice();
-   cl_kernel kernelSumVector  = device.GetKernel(EOpenCLKernel::kSumVector);
+   TOpenCLDevice    &device = Y.GetDevice();
+   cl::CommandQueue queue  = device.GetQueue();
 
-   cl_mem Ad = Y.GetElementPointer();
-   cl_mem Bd = output.GetElementPointer();
-   int m     = (int) Y.GetNrows();
-   int n     = (int) Y.GetNcols();
+   try {
+      int m     = (int) Y.GetNrows();
+      int n     = (int) Y.GetNcols();
 
-   cl_mem result, temp;
-   result = clCreateBuffer(device.GetContext(), CL_MEM_WRITE_ONLY,
-                           sizeof(OpenCLDouble_t), nullptr, & error);
-   temp   = clCreateBuffer(device.GetContext(), CL_MEM_READ_WRITE,
-                           n * sizeof(OpenCLDouble_t), nullptr, & error);
+      cl::Buffer result(device.GetContext(), CL_MEM_WRITE_ONLY, sizeof(OpenCLDouble_t));
+      cl::Buffer temp(device.GetContext(), CL_MEM_READ_WRITE, n * sizeof(OpenCLDouble_t));
+      cl::LocalSpaceArg shared = cl::Local(device.localSize * sizeof(OpenCLDouble_t));
 
-   error = clSetKernelArg(kernel, 0, sizeof(OpenCLDouble_t *), &Ad);
-   device.HandleError(error);
-   error = clSetKernelArg(kernel, 1, sizeof(OpenCLDouble_t *), &Bd);
-   device.HandleError(error);
-   error = clSetKernelArg(kernel, 2, sizeof(int), &m);
-   device.HandleError(error);
-   error = clSetKernelArg(kernel, 3,
-                          TOpenCLDevice::localSize * sizeof(OpenCLDouble_t),
-                          nullptr);
-   error = clSetKernelArg(kernel, 4, sizeof(OpenCLDouble_t *), &temp);
-   device.HandleError(error);
+      cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
+      cl::NDRange local(1, TOpenCLDevice::localSize);
 
-   size_t globalWorkSize[2] = {static_cast<size_t>(n), TOpenCLDevice::localSize};
-   size_t localWorkSize[2]  = {1, TOpenCLDevice::localSize};
-   clEnqueueNDRangeKernel(device.GetQueue(), kernel,
-                          2, nullptr, globalWorkSize, localWorkSize,
-                          0, nullptr, nullptr);
+      device.EnqueueKernel(kernel, global, local,
+                           Y.GetElementBuffer(),
+                           output.GetElementBuffer(),
+                           m, shared, temp);
 
+      global = cl::NDRange(1, TOpenCLDevice::localSize);
+      device.EnqueueKernel(EOpenCLKernel::kSumVector, global, local, result,
+                           n, temp, shared);
+      OpenCLDouble_t * hostResult
+          = (OpenCLDouble_t *) queue.enqueueMapBuffer(result, CL_TRUE, CL_MAP_READ,
+                                                      0, sizeof(OpenCLDouble_t));
+      OpenCLDouble_t norm = 1.0 / static_cast<OpenCLDouble_t>(m * n);
+      return norm * hostResult[0];
 
-   error = clSetKernelArg(kernelSumVector, 0, sizeof(OpenCLDouble_t *), &result);
-   device.HandleError(error);
-   error = clSetKernelArg(kernelSumVector, 1, sizeof(int), &n);
-   device.HandleError(error);
-   error = clSetKernelArg(kernelSumVector, 2, sizeof(OpenCLDouble_t *), &temp);
-   device.HandleError(error);
-   error = clSetKernelArg(kernelSumVector, 3,
-                          TOpenCLDevice::localSize * sizeof(OpenCLDouble_t),
-                          nullptr);
-   device.HandleError(error);
-   globalWorkSize[0] = 1;
-   clEnqueueNDRangeKernel(device.GetQueue(), kernelSumVector,
-                          2, nullptr, globalWorkSize, localWorkSize,
-                          0, nullptr, nullptr);
-
-   OpenCLDouble_t * hostResult =
-       (OpenCLDouble_t*) clEnqueueMapBuffer(device.GetQueue(), result,
-                                            CL_TRUE, CL_MAP_READ, 0,
-                                            sizeof(OpenCLDouble_t),
-                                            0, nullptr, nullptr, &error);
-   device.HandleError(error);
-   OpenCLDouble_t norm = 1.0 / static_cast<OpenCLDouble_t>(m * n);
-   return norm * hostResult[0];
+   } catch (cl::Error error) {
+      std::cout << "Error executing loss function kernel: "
+                << device.GetErrorString(error.err()) << std::endl;
+   }
 }
 
 OpenCLDouble_t TOpenCL::MeanSquaredError(const TOpenCLMatrix & Y,
                                          const TOpenCLMatrix & output)
 {
-   cl_kernel kernel =
-       Y.GetDevice().GetKernel(EOpenCLKernel::kSquaredErrorColumns);
-   return ExecuteLossFunctionsKernel(kernel, Y, output);
+   return ExecuteLossFunctionsKernel(EOpenCLKernel::kSquaredErrorColumns, Y, output);
 }
 
 void TOpenCL::MeanSquaredErrorGradients(TOpenCLMatrix &dY,
                                         const TOpenCLMatrix & Y,
                                         const TOpenCLMatrix & output)
 {
-   cl_int error;
    TOpenCLDevice &device = Y.GetDevice();
-   cl_kernel kernel = device.GetKernel(EOpenCLKernel::kMeanSquaredErrorGradients);
 
-   cl_mem Ad = Y.GetElementPointer();
-   cl_mem Bd = output.GetElementPointer();
-   cl_mem Cd = dY.GetElementPointer();
    int m     = (int) Y.GetNrows();
    int n     = (int) Y.GetNcols();
 
-   error = clSetKernelArg(kernel, 0, sizeof(OpenCLDouble_t *), &Cd);
-   device.HandleError(error);
-   error = clSetKernelArg(kernel, 1, sizeof(OpenCLDouble_t *), &Ad);
-   device.HandleError(error);
-   error = clSetKernelArg(kernel, 2, sizeof(OpenCLDouble_t *), &Bd);
-   device.HandleError(error);
-   error = clSetKernelArg(kernel, 3, sizeof(int), &m);
-   device.HandleError(error);
-   error = clSetKernelArg(kernel, 4, sizeof(int), &n);
-   device.HandleError(error);
-
-   size_t globalWorkSize[2] = {static_cast<size_t>(n), TOpenCLDevice::localSize};
-   size_t localWorkSize[2]  = {1, TOpenCLDevice::localSize};
-   clEnqueueNDRangeKernel(device.GetQueue(), kernel,
-                          2, nullptr, globalWorkSize, localWorkSize,
-                          0, nullptr, nullptr);
+   cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
+   cl::NDRange local(1, TOpenCLDevice::localSize);
+   device.EnqueueKernel(EOpenCLKernel::kMeanSquaredErrorGradients, global, local,
+                        dY.GetElementBuffer(), Y.GetElementBuffer(),
+                        output.GetElementBuffer(), m, n);
 }
 
 OpenCLDouble_t TOpenCL::CrossEntropy(const TOpenCLMatrix & Y,
                                      const TOpenCLMatrix & output)
 {
-   cl_kernel kernel =
-       Y.GetDevice().GetKernel(EOpenCLKernel::kCrossEntropyColumns);
-   return ExecuteLossFunctionsKernel(kernel, Y, output);
+   return ExecuteLossFunctionsKernel(EOpenCLKernel::kCrossEntropyColumns, Y, output);
 }
 
 void TOpenCL::CrossEntropyGradients(TOpenCLMatrix &dY,
                                     const TOpenCLMatrix & Y,
                                     const TOpenCLMatrix & output)
 {
-   cl_int error;
    TOpenCLDevice &device = Y.GetDevice();
-   cl_kernel kernel = device.GetKernel(EOpenCLKernel::kCrossEntropyGradients);
 
-   cl_mem Ad = Y.GetElementPointer();
-   cl_mem Bd = output.GetElementPointer();
-   cl_mem Cd = dY.GetElementPointer();
    int m     = (int) Y.GetNrows();
    int n     = (int) Y.GetNcols();
 
-   error = clSetKernelArg(kernel, 0, sizeof(OpenCLDouble_t *), &Cd);
-   device.HandleError(error);
-   error = clSetKernelArg(kernel, 1, sizeof(OpenCLDouble_t *), &Ad);
-   device.HandleError(error);
-   error = clSetKernelArg(kernel, 2, sizeof(OpenCLDouble_t *), &Bd);
-   device.HandleError(error);
-   error = clSetKernelArg(kernel, 3, sizeof(int), &m);
-   device.HandleError(error);
-   error = clSetKernelArg(kernel, 4, sizeof(int), &n);
-   device.HandleError(error);
-
-   size_t globalWorkSize[2] = {static_cast<size_t>(n), TOpenCLDevice::localSize};
-   size_t localWorkSize[2]  = {1, TOpenCLDevice::localSize};
-   clEnqueueNDRangeKernel(device.GetQueue(), kernel,
-                          2, nullptr, globalWorkSize, localWorkSize,
-                          0, nullptr, nullptr);
+   cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
+   cl::NDRange local(1, TOpenCLDevice::localSize);
+   device.EnqueueKernel(EOpenCLKernel::kCrossEntropyGradients, global, local,
+                        dY.GetElementBuffer(), Y.GetElementBuffer(),
+                        output.GetElementBuffer(), m, n);
 }
 
 } // namespace DNN

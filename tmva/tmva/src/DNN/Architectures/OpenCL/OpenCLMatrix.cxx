@@ -19,49 +19,60 @@ namespace TMVA {
 namespace DNN  {
 
 TOpenCLDevice TOpenCLMatrix::fDevice{};
+cl::Buffer    TOpenCLMatrix::fRandomStreams{};
+size_t        TOpenCLMatrix::fNStreams = 0;
 
 TOpenCLMatrix::TOpenCLMatrix(size_t nRows, size_t nCols)
     : fNRows(nRows), fNCols(nCols), fNElements(nRows * nCols)
 {
-   cl_int err;
-   fElementPointer = clCreateBuffer(fDevice.GetContext(), CL_MEM_READ_WRITE,
-                                    fNElements * sizeof(OpenCLDouble_t),
-                                    nullptr, &err);
-   fDevice.HandleError(err);
-
+   if (fNElements > 0) {
+      try {
+         fElementBuffer = cl::Buffer(fDevice.GetContext(), CL_MEM_READ_WRITE,
+                                     fNElements * sizeof(OpenCLDouble_t));
+      } catch (cl::Error error) {
+         std::cout << "Error allocating TOpenCLMatrix: 1 " << error.what() << std::endl;
+         std::cout << nRows << " x " << nCols << std::endl;
+         fDevice.HandleError(error.err());
+      }
+   }
+   InitializeRandomStreams();
 }
 
 TOpenCLMatrix::TOpenCLMatrix(const TMatrixT<OpenCLDouble_t> & A)
 : fNRows(A.GetNrows()), fNCols(A.GetNcols()), fNElements(A.GetNoElements())
 {
-   OpenCLDouble_t * buffer = new OpenCLDouble_t[fNRows * fNCols];
-
-   size_t bufferIndex = 0;
-   for (size_t j = 0; j < fNCols; j++) {
-      for (size_t i = 0; i < fNRows; i++) {
-         buffer[bufferIndex] = A(i,j);
-         bufferIndex++;
+   if (fNElements > 0) {
+      OpenCLDouble_t * buffer = new OpenCLDouble_t[fNRows * fNCols];
+      size_t bufferIndex = 0;
+      for (size_t j = 0; j < fNCols; j++) {
+         for (size_t i = 0; i < fNRows; i++) {
+            buffer[bufferIndex] = A(i,j);
+            bufferIndex++;
+         }
       }
-   }
 
-   cl_int error;
-   fElementPointer = clCreateBuffer(fDevice.GetContext(),
-                                    CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
-                                    fNElements * sizeof(OpenCLDouble_t),
-                                    (void*) buffer, &error);
-   fDevice.HandleError(error);
+      try {
+         fElementBuffer = cl::Buffer(fDevice.GetContext(),
+                                     CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
+                                     fNElements * sizeof(OpenCLDouble_t), buffer);
+      } catch (cl::Error error) {
+         std::cout << "Error allocating TOpenCLMatrix: 2 " << error.what()
+                   << std::endl << std::endl;
+         fDevice.HandleError(error.err());
+      }
+
+      delete[] buffer;
+   }
+   InitializeRandomStreams();
 }
 
 TOpenCLMatrix::operator TMatrixT<OpenCLDouble_t>() const
 {
    OpenCLDouble_t *buffer = new OpenCLDouble_t[fNRows * fNCols];
 
-   cl_int err;
-   err = clEnqueueReadBuffer(fDevice.GetQueue(), fElementPointer, CL_TRUE, 0,
-                             fNElements * sizeof(OpenCLDouble_t), (void*) buffer, 0,
-                             nullptr, nullptr);
-   fDevice.HandleError(err);
-
+   fDevice.GetQueue().enqueueReadBuffer(fElementBuffer, CL_TRUE,
+                                        0, fNElements * sizeof(OpenCLDouble_t),
+                                        (void *) buffer);
 
    TMatrixT<OpenCLDouble_t> A(fNRows, fNCols);
    size_t bufferIndex = 0;
@@ -71,7 +82,66 @@ TOpenCLMatrix::operator TMatrixT<OpenCLDouble_t>() const
          bufferIndex++;
       }
    }
+
+   delete[] buffer;
    return A;
+}
+
+TOpenCLMatrix & TOpenCLMatrix::operator=(const TMatrixT<OpenCLDouble_t> &A)
+{
+   fNRows = A.GetNrows();
+   fNCols = A.GetNcols();
+   fNElements = fNRows * fNCols;
+
+   OpenCLDouble_t *buffer = new OpenCLDouble_t[fNRows * fNCols];
+
+   size_t bufferIndex = 0;
+   for (size_t j = 0; j < fNCols; j++) {
+      for (size_t i = 0; i < fNRows; i++) {
+         buffer[bufferIndex] = A(i,j);
+         bufferIndex++;
+      }
+   }
+
+   try {
+      fElementBuffer = cl::Buffer(fDevice.GetContext(),
+                                  CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
+                                  fNElements * sizeof(OpenCLDouble_t), buffer);
+   } catch (cl::Error error) {
+      std::cout << "Error allocating TOpenCLMatrix: = " << error.what()
+                << std::endl << std::endl;
+      fDevice.HandleError(error.err());
+   }
+
+   delete[] buffer;
+   InitializeRandomStreams();
+}
+
+inline void TOpenCLMatrix::InitializeRandomStreams()
+{
+   clrngLfsr113Stream * streamBuffer = nullptr;
+   size_t streamBufferSize;
+
+   if ((fNStreams == 0) || (fNStreams < fNElements)) {
+      std::cout << "Allocated " << fNElements << " random streams." << std::endl;
+
+      // Create random streams.
+      streamBuffer = clrngLfsr113CreateStreams(NULL, fNElements,
+                                               &streamBufferSize, nullptr);
+
+      // Transfer to device.
+      try {
+      fRandomStreams = cl::Buffer(fDevice.GetContext(),
+                                  CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
+                                  streamBufferSize, streamBuffer);
+      } catch (cl::Error error) {
+         fDevice.HandleError(error.err());
+      }
+
+      fNStreams = fNElements;
+      // Clean up.
+      delete[] streamBuffer;
+   }
 }
 
 } // namespace DNN

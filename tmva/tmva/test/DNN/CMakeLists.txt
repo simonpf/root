@@ -91,8 +91,14 @@ endif (CUDA_FOUND)
 #--- OpenCL tests -----------------
 
 find_package(OpenCL)
-if (OpenCL_FOUND AND clBLAS_DIR)
-  include_directories(${ROOT_INCLUDE_DIRS} ${OpenCL_INCLUDE_DIRS} ${clBLAS_DIR}/src)
+if (OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)
+  include_directories(${ROOT_INCLUDE_DIRS} ${OpenCL_INCLUDE_DIRS}
+    ${clBLAS_DIR}/src ${clRNG_DIR}/src/include)
+  LINK_DIRECTORIES(${clBLAS_DIR}/library ${clRNG_DIR}/src/library)
+
+  # DNN - Matrix Arithmetic OpenCL
+  ROOT_EXECUTABLE(testOpenCL TestOpenCL.cxx
+                  LIBRARIES ${Libraries}  dnn_opencl ${OpenCL_LIBRARIES} clBLAS clRNG)
 
   # DNN - Matrix Arithmetic OpenCL
   LINK_DIRECTORIES(/home/simon/src/clBLAS/library)
@@ -113,4 +119,9 @@ if (OpenCL_FOUND AND clBLAS_DIR)
   ROOT_EXECUTABLE(testDerivativesOpenCL TestDerivativesOpenCL.cxx
                   LIBRARIES ${Libraries}  dnn_opencl ${OpenCL_LIBRARIES} clBLAS )
   ROOT_ADD_TEST(TMVA-DNN-DerivativesOpenCL COMMAND testDerivativesOpenCL)
-endif(OpenCL_FOUND AND clBLAS_DIR)
+
+  # DNN - Derivatives OpenCL
+  ROOT_EXECUTABLE(testBackpropagationOpenCL TestBackpropagationOpenCL.cxx
+                  LIBRARIES ${Libraries}  dnn_opencl ${OpenCL_LIBRARIES} clBLAS )
+  ROOT_ADD_TEST(TMVA-DNN-BackpropagationOpenCL COMMAND testBackPropagationOpenCL)
+endif(OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)
