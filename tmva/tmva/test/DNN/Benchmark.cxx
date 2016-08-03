@@ -15,6 +15,7 @@
 
 #include <iostream>
 #include "TMVA/DNN/Architectures/Cuda.h"
+#include "TMatrix.h"
 #include "TestMinimization.h"
 
 using namespace TMVA::DNN;
@@ -23,11 +24,10 @@ using Architecture = TCuda<true>;
 
 int main()
 {
-   using Matrix_t = typename Architecture::Matrix_t;
    using Net_t    = TNet<Architecture>;
 
-   Matrix_t XTrain(10000,20), YTrain(10000,20), XTest(1000,20), YTest(1000,20),
-            W(20, 1);
+   TMatrixT<Double_t> XTrain(10000,20), YTrain(10000,20),
+       XTest(1000,20), YTest(1000,20), W(20, 1);
 
    // Generate test data.
    randomMatrix(W);
