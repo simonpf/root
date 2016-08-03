@@ -106,8 +106,7 @@ public:
    size_t GetWidth()              const {return fWidth;}
    size_t GetDropoutProbability() const {return fDropoutProbability;}
 
-   size_t GetFlopsForward() const;
-   size_t GetFlopsBackward() const;
+   size_t GetFlops() const;
 
    void SetDropoutProbability(Scalar_t p) {fDropoutProbability = p;}
 
@@ -289,6 +288,20 @@ template<typename Architecture_t>
 }
 
 //______________________________________________________________________________
+template<typename Architecture_t>
+size_t TLayer<Architecture_t>::GetFlops() const
+{
+    size_t flops = fOutput.GetNrows() * fOutput.GetNcols() * (2 * fInputWidth - 1);
+    flops += fOutput.GetNrows() * fOutput.GetNcols()
+             * (1 + ::TMVA::DNN::Flops<Architecture_t>(fF));
+    flops += fWidth * fBatchSize;
+    flops += fBatchSize * fInputWidth * (2.0 * fWidth - 1.0);
+    flops += fWidth * fInputWidth * (2.0 * fBatchSize - 1.0);
+    flops += fWidth * (fBatchSize - 1.0);
+    return flops;
+}
+
+//______________________________________________________________________________
 //
 //  The Shared Layer Class - Implementation
 //______________________________________________________________________________
@@ -364,26 +377,6 @@ void TSharedLayer<Architecture_t>::Print() const
    std::cout << "Width: " << fWeights.GetNrows();
    std::cout << ", activation function: ";
    std::cout << static_cast<char>(fF) << std::endl;
-}
-
-//______________________________________________________________________________
-template<typename Architecture_t>
-void TSharedLayer<Architecture_t>::GetFlopsForward() const
-{
-    size_t flops = fOutput.GetNrows() * fOutput.GetNcols() * (2 * fInputWidth - 1);
-    flops += fOutput.GetNrows() * fOutput.GetNcols() * (1 + Flops(fF));
-    return flops;
-}
-
-//______________________________________________________________________________
-template<typename Architecture_t>
-void TSharedLayer<Architecture_t>::GetFlopsBackward() const
-{
-    size_t flops = fWidth * fBatchSize;
-    flops += fBatchSize * fInputWidth * (2.0 * fWidth - 1.0);
-    flops += fWidth * fInputWidth * (2.0 * fBatchSize - 1.0);
-    flops += fWidth * (fBatchSize - 1.0);
-    return flops;
 }
 
 } // namespace DNN

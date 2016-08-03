@@ -83,7 +83,7 @@ if (CUDA_FOUND)
   ROOT_ADD_TEST(TMVA-DNN-ArithmeticCuda COMMAND testArithmeticCuda)
 
   # DNN - Benchmark Cuda
-  CUDA_ADD_EXECUTABLE(testBenchmark TestBenchmark.cxx)
-  TARGET_LINK_LIBRARIES(testBenchmark ${Libraries} dnn_cuda
+  CUDA_ADD_EXECUTABLE(BenchmarkCuda Benchmark.cxx)
+  TARGET_LINK_LIBRARIES(BenchmarkCuda ${Libraries} dnn_cuda
     ${CUDA_CUBLAS_LIBRARIES} dnn_cuda)
 endif (CUDA_FOUND)

@@ -265,25 +265,26 @@ inline void initialize(typename Architecture_t::Matrix_t & A,
 //______________________________________________________________________________
 
 template<typename Architecture_t>
-inline void Flops(EActivationFunction f)
+inline typename Architecture_t::Scalar_t Flops(EActivationFunction f)
 {
    size_t flops;
    switch(f) {
-   case EActivationFunction::Identity      : flops =  0;
+   case EActivationFunction::IDENTITY      : flops =  0;
        break;
-   case EActivationFunction::Relu          : flops =  2;
+   case EActivationFunction::RELU          : flops =  2;
        break;
-   case EActivationFunction::Sigmoid       : flops = 36;
+   case EActivationFunction::SIGMOID       : flops = 36;
        break;
-   case EActivationFunction::Tanh          : flops = 42;
+   case EActivationFunction::TANH          : flops = 42;
        break;
-   case EActivationFunction::SymmetricRelu : flops =  2;
+   case EActivationFunction::SYMMRELU      : flops =  2;
        break;
-   case EActivationFunction::SoftSign      : flops = 16;
+   case EActivationFunction::SOFTSIGN      : flops = 16;
        break;
-   case EActivationFunction::Gauss         : flops = 26;
+   case EActivationFunction::GAUSS         : flops = 26;
        break;
    }
+   return flops;
 }
 
 } // namespace DNN
