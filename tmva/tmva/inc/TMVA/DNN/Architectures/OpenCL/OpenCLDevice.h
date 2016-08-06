@@ -21,6 +21,7 @@
 #define __CL_VERSION_1_2
 
 #include "CL/cl.hpp"
+#include <tbb/mutex.h>
 #include <vector>
 #include <tuple>
 
@@ -73,31 +74,111 @@ class TOpenCLDevice
 private:
 
    cl::Device       fDevice;
-   cl::Context      fContext       = 0;
-   cl::CommandQueue fQueue         = 0;
+   cl::Context      fContext;
    cl::Program      fProgram;
    cl::Kernel       fKernels[26];
+   std::vector<cl::CommandQueue> fQueues;
+
+   size_t fNComputeQueues;
 
 public:
+
+   class TOpenCLDeviceBuffer
+   {
+   private:
+
+      cl::Buffer  fBuffer;
+      cl::Event   fConsumptionEvent;
+      cl::Event   fTransferEvent;
+      const TOpenCLDevice & fDevice;
+
+      TOpenCLDeviceBuffer(size_t size, const TOpenCLDevice & device);
+      TOpenCLDeviceBuffer(cl::Buffer buffer, const TOpenCLDevice & device);
+      TOpenCLDeviceBuffer(const TOpenCLDeviceBuffer  &)             = delete;
+      TOpenCLDeviceBuffer & operator=(const TOpenCLDeviceBuffer  &) = delete;
+      TOpenCLDeviceBuffer & operator=(      TOpenCLDeviceBuffer &&) = delete;
+
+      friend class TOpenCLDevice;
+
+   public:
+
+      TOpenCLDeviceBuffer(TOpenCLDeviceBuffer &&)                   = default;
+
+      void SetTransferEvent(cl::Event event) {fTransferEvent = event;}
+
+      const TOpenCLDevice & GetDevice() const {return fDevice;}
+      cl::Buffer GetBuffer() const {return fBuffer;}
+      TOpenCLDeviceBuffer GetSubBuffer(size_t start, size_t size);
+      void SetUnconsumed();
+      void SetConsumed();
+      void SynchronizeComputation() const;
+      void SynchronizeTransfer()    const;
+   };
+
+   class TOpenCLHostBuffer
+   {
+   private:
+
+       cl::Buffer              fBuffer;
+       cl::Context             fContext;
+       cl::CommandQueue        fDataQueue;
+       OpenCLDouble_t *        fDataPointer;
+       size_t                  fSize;
+       tbb::mutex              fMutex;
+       tbb::mutex::scoped_lock fLock;
+
+       TOpenCLHostBuffer(size_t size,
+                         cl::Context context,
+                         cl::CommandQueue dataQueue);
+       TOpenCLHostBuffer(const TOpenCLHostBuffer &)             = delete;
+       TOpenCLHostBuffer & operator=(const TOpenCLHostBuffer &) = delete;
+       TOpenCLHostBuffer & operator=(TOpenCLHostBuffer &&)      = delete;
+
+       friend class TOpenCLDevice;
+
+   public:
+
+       TOpenCLHostBuffer(TOpenCLHostBuffer &&);
+
+       void Lock();
+       void Release();
+       void CopyTo(TOpenCLDeviceBuffer & deviceBuffer);
+
+       OpenCLDouble_t & operator[](size_t index);
+       OpenCLDouble_t   operator[](size_t index) const;
+
+   };
+
+   using HostBuffer_t   = TOpenCLHostBuffer;
+   using DeviceBuffer_t = TOpenCLDeviceBuffer;
 
    static constexpr size_t localSizeX = 16;
    static constexpr size_t localSizeY = 16;
    static constexpr size_t localSize  = localSizeX * localSizeY;
 
-   TOpenCLDevice();
+   TOpenCLDevice(size_t nComputeQueues = 1);
+   TOpenCLDevice(const TOpenCLDevice  &)             = default;
+   TOpenCLDevice(      TOpenCLDevice &&)             = default;
+   TOpenCLDevice & operator=(const TOpenCLDevice  &) = default;
+   TOpenCLDevice & operator=(      TOpenCLDevice &&) = default;
+
    inline void HandleError(cl_int error) const;
    inline const char * GetErrorString(cl_int error) const;
    inline void PrintBuildError(cl::Program program) const;
 
-   cl::Context      GetContext() const {return fContext;}
-   cl::CommandQueue GetQueue()   const {return fQueue;}
-   cl::Device       GetDevice()  const {return fDevice;}
+   TOpenCLHostBuffer   CreateHostBuffer(size_t size);
+   TOpenCLDeviceBuffer CreateDeviceBuffer(size_t size);
+
+   cl::Context      GetContext()       const {return fContext;}
+   cl::CommandQueue GetQueue(size_t i) const {return fQueues[i];}
+   cl::Device       GetDevice()        const {return fDevice;}
 
    template<typename ...Args>
    inline void EnqueueKernel(EOpenCLKernel kernelEnum,
+                             size_t computeStreamIndex,
                              cl::NDRange globalSize,
                              cl::NDRange localSize,
-                             Args ...args);
+                             Args ...args) const;
 
 private:
 
@@ -216,15 +297,16 @@ inline const char * TOpenCLDevice::GetErrorString(cl_int error) const
 
 template <class ...Args>
 inline void TOpenCLDevice::EnqueueKernel(EOpenCLKernel kernelEnum,
+                                         size_t streamIndex,
                                          cl::NDRange global,
                                          cl::NDRange local,
-                                         Args ...args)
+                                         Args ...args) const
 {
    cl::Kernel kernel = fKernels[static_cast<int>(kernelEnum)];
    auto arguments = std::make_tuple(args...);
 
    SetArguments<decltype(arguments)>::execute(kernel, arguments);
-   fQueue.enqueueNDRangeKernel(kernel, cl::NullRange, global, local);
+   fQueues[streamIndex].enqueueNDRangeKernel(kernel, cl::NullRange, global, local);
 }
 
 } // namespace DNN

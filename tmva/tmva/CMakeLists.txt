@@ -49,7 +49,8 @@ set(dnn_cuda_files src/DNN/Architectures/Cuda/ActivationFunctions.cu
                    src/DNN/Architectures/Cuda/OutputFunctions.cu
                    src/DNN/Architectures/Cuda/Propagation.cu
                    src/DNN/Architectures/Cuda/Regularization.cu)
-set(dnn_opencl_files src/DNN/Architectures/OpenCL/Arithmetic.cxx
+set(dnn_opencl_files src/DNN/Architectures/OpenCL.cxx
+                     src/DNN/Architectures/OpenCL/Arithmetic.cxx
                      src/DNN/Architectures/OpenCL/ActivationFunctions.cxx
                      src/DNN/Architectures/OpenCL/Initialization.cxx
                      src/DNN/Architectures/OpenCL/LossFunctions.cxx
@@ -88,7 +89,7 @@ if (OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)
   MESSAGE(STATUS "KERNEL INCLUDE: " ${KERNEL_INCLUDE})
   target_compile_definitions(dnn_opencl PRIVATE -D__KERNEL_FILE__=${KERNEL_FILE})
   target_compile_definitions(dnn_opencl PRIVATE -D__KERNEL_INCLUDE_DIRS__=${KERNEL_INCLUDE})
-  set(opencl_libraries dnn_opencl ${OpenCL_LIBRARIES})
+  set(opencl_libraries dnn_opencl tbb ${OpenCL_LIBRARIES})
 else (OpenCL_FOUND AND clBLAS_FOUND AND clRNG_DIR)
   set(opencl_libraries)
 endif(OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)

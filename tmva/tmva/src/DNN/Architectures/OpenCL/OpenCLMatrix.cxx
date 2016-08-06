@@ -18,12 +18,15 @@
 namespace TMVA {
 namespace DNN  {
 
-TOpenCLDevice TOpenCLMatrix::fDevice{};
 cl::Buffer    TOpenCLMatrix::fRandomStreams{};
 size_t        TOpenCLMatrix::fNStreams = 0;
 
-TOpenCLMatrix::TOpenCLMatrix(size_t nRows, size_t nCols)
-    : fNRows(nRows), fNCols(nCols), fNElements(nRows * nCols)
+TOpenCLMatrix::TOpenCLMatrix(size_t nRows,
+                             size_t nCols,
+                             const TOpenCLDevice & device,
+                             size_t computeStreamIndex)
+    : fDevice(device), fNRows(nRows), fNCols(nCols), fNElements(nRows * nCols),
+      fComputeStreamIndex(computeStreamIndex)
 {
    if (fNElements > 0) {
       try {
@@ -38,8 +41,11 @@ TOpenCLMatrix::TOpenCLMatrix(size_t nRows, size_t nCols)
    InitializeRandomStreams();
 }
 
-TOpenCLMatrix::TOpenCLMatrix(const TMatrixT<OpenCLDouble_t> & A)
-: fNRows(A.GetNrows()), fNCols(A.GetNcols()), fNElements(A.GetNoElements())
+TOpenCLMatrix::TOpenCLMatrix(const TMatrixT<OpenCLDouble_t> & A,
+                             const TOpenCLDevice & device,
+                             size_t computeStreamIndex)
+    : fDevice(device), fNRows(A.GetNrows()), fNCols(A.GetNcols()),
+      fNElements(A.GetNoElements()), fComputeStreamIndex(computeStreamIndex)
 {
    if (fNElements > 0) {
       OpenCLDouble_t * buffer = new OpenCLDouble_t[fNRows * fNCols];
@@ -66,13 +72,29 @@ TOpenCLMatrix::TOpenCLMatrix(const TMatrixT<OpenCLDouble_t> & A)
    InitializeRandomStreams();
 }
 
+TOpenCLMatrix::TOpenCLMatrix(size_t nRows,
+                             size_t nCols,
+                             const DeviceBuffer_t & buffer,
+                             size_t computeStreamIndex)
+    : fDevice(buffer.GetDevice()), fNRows(nRows), fNCols(nCols),
+      fNElements(nRows * nCols), fElementBuffer(buffer.GetBuffer()),
+      fComputeStreamIndex(computeStreamIndex)
+{
+   // Nothing to do here.
+}
+
 TOpenCLMatrix::operator TMatrixT<OpenCLDouble_t>() const
 {
    OpenCLDouble_t *buffer = new OpenCLDouble_t[fNRows * fNCols];
 
-   fDevice.GetQueue().enqueueReadBuffer(fElementBuffer, CL_TRUE,
-                                        0, fNElements * sizeof(OpenCLDouble_t),
-                                        (void *) buffer);
+   std::cout << "element buffer " << fElementBuffer() << std::endl;
+   try{
+   fDevice.GetQueue(0).enqueueReadBuffer(fElementBuffer, CL_TRUE,
+                                         0, fNElements * sizeof(OpenCLDouble_t),
+                                         (void *) buffer);
+   } catch (cl::Error error) {
+       fDevice.HandleError(error.err());
+   }
 
    TMatrixT<OpenCLDouble_t> A(fNRows, fNCols);
    size_t bufferIndex = 0;

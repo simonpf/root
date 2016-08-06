@@ -23,8 +23,8 @@ inline OpenCLDouble_t ExecuteLossFunctionsKernel(EOpenCLKernel kernel,
                                                  const TOpenCLMatrix & Y,
                                                  const TOpenCLMatrix & output)
 {
-   TOpenCLDevice    &device = Y.GetDevice();
-   cl::CommandQueue queue  = device.GetQueue();
+   const TOpenCLDevice &device = Y.GetDevice();
+   cl::CommandQueue     queue  = Y.GetQueue();
 
    try {
       int m     = (int) Y.GetNrows();
@@ -37,14 +37,14 @@ inline OpenCLDouble_t ExecuteLossFunctionsKernel(EOpenCLKernel kernel,
       cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
       cl::NDRange local(1, TOpenCLDevice::localSize);
 
-      device.EnqueueKernel(kernel, global, local,
-                           Y.GetElementBuffer(),
-                           output.GetElementBuffer(),
+      size_t streamIndex = Y.GetComputeStreamIndex();
+      device.EnqueueKernel(kernel, streamIndex, global, local,
+                           Y.GetElementBuffer(), output.GetElementBuffer(),
                            m, shared, temp);
 
       global = cl::NDRange(1, TOpenCLDevice::localSize);
-      device.EnqueueKernel(EOpenCLKernel::kSumVector, global, local, result,
-                           n, temp, shared);
+      device.EnqueueKernel(EOpenCLKernel::kSumVector, streamIndex,
+                           global, local, result, n, temp, shared);
       OpenCLDouble_t * hostResult
           = (OpenCLDouble_t *) queue.enqueueMapBuffer(result, CL_TRUE, CL_MAP_READ,
                                                       0, sizeof(OpenCLDouble_t));
@@ -67,16 +67,19 @@ void TOpenCL::MeanSquaredErrorGradients(TOpenCLMatrix &dY,
                                         const TOpenCLMatrix & Y,
                                         const TOpenCLMatrix & output)
 {
-   TOpenCLDevice &device = Y.GetDevice();
+   const TOpenCLDevice &device = Y.GetDevice();
 
    int m     = (int) Y.GetNrows();
    int n     = (int) Y.GetNcols();
 
    cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
    cl::NDRange local(1, TOpenCLDevice::localSize);
-   device.EnqueueKernel(EOpenCLKernel::kMeanSquaredErrorGradients, global, local,
+   size_t streamIndex = Y.GetComputeStreamIndex();
+   device.EnqueueKernel(EOpenCLKernel::kMeanSquaredErrorGradients,
+                        streamIndex, global, local,
                         dY.GetElementBuffer(), Y.GetElementBuffer(),
                         output.GetElementBuffer(), m, n);
+   dY.SetComputeStreamIndex(streamIndex);
 }
 
 OpenCLDouble_t TOpenCL::CrossEntropy(const TOpenCLMatrix & Y,
@@ -89,16 +92,19 @@ void TOpenCL::CrossEntropyGradients(TOpenCLMatrix &dY,
                                     const TOpenCLMatrix & Y,
                                     const TOpenCLMatrix & output)
 {
-   TOpenCLDevice &device = Y.GetDevice();
+   const TOpenCLDevice &device = Y.GetDevice();
 
    int m     = (int) Y.GetNrows();
    int n     = (int) Y.GetNcols();
 
    cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
    cl::NDRange local(1, TOpenCLDevice::localSize);
-   device.EnqueueKernel(EOpenCLKernel::kCrossEntropyGradients, global, local,
+   size_t streamIndex = Y.GetComputeStreamIndex();
+   device.EnqueueKernel(EOpenCLKernel::kCrossEntropyGradients,
+                        streamIndex, global, local,
                         dY.GetElementBuffer(), Y.GetElementBuffer(),
                         output.GetElementBuffer(), m, n);
+   dY.SetComputeStreamIndex(streamIndex);
 }
 
 } // namespace DNN

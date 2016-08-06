@@ -13,8 +13,10 @@
 // Generic test for DataLoader implementations. //
 //////////////////////////////////////////////////
 
-#include "TMVA/DNN/Net.h"
+#include "TMVA/DNN/DeviceDataLoader.h"
+#include "TMatrix.h"
 #include "Utility.h"
+#include "tbb/tbb.h"
 
 namespace TMVA
 {
@@ -26,30 +28,34 @@ auto testDataLoader()
     -> typename Architecture_t::Scalar_t
 {
 
-    using Scalar_t     = typename Architecture_t::Scalar_t;
-    using Matrix_t     = typename Architecture_t::Matrix_t;
-    using Net_t        = TNet<Architecture_t>;
+   using Real_t       = typename Architecture_t::Scalar_t;
+   using Device_t     = typename Architecture_t::Device_t;
+   using DataLoader_t = TDeviceDataLoader<Architecture_t, MatrixInput_t>;
 
-    using DataLoader_t = typename Architecture_t::template DataLoader_t<MatrixInput_t>;
+   size_t nSamples  = 1000000;
+   size_t batchSize = 10000;
+   size_t nFeatures = 100;
 
-    Matrix_t X(2000, 100); randomMatrix(X);
-    MatrixInput_t input(X, X);
-    DataLoader_t loader(input, 2000, 20, 100, 100);
+   TMatrixT<Double_t> X(nSamples, nFeatures), Y(nSamples, nFeatures);
+   randomMatrix(X);
+   randomMatrix(Y);
+   MatrixInput_t input(X, Y);
 
-    Net_t net(20, 100, ELossFunction::MEANSQUAREDERROR);
-    net.AddLayer(100,  EActivationFunction::IDENTITY);
-    net.AddLayer(100,  EActivationFunction::IDENTITY);
-    net.Initialize(EInitialization::IDENTITY);
+   Device_t     device(4);
+   DataLoader_t loader(input, nSamples, batchSize, nFeatures, nFeatures, 4, 4, device);
 
-    Scalar_t maximumError = 0.0;
-    for (auto b : loader) {
-        Matrix_t inputMatrix  = b.GetInput();
-        Matrix_t outputMatrix = b.GetOutput();
-        Scalar_t error = net.Loss(inputMatrix, outputMatrix);
-        maximumError = std::max(error, maximumError);
-    }
+   Real_t msq = 0.0;
+   for (size_t i = 0; i < nSamples / batchSize; i++) {
+      auto batch = loader.GetBatch();
+      msq += Architecture_t::MeanSquaredError(batch.GetInput(), batch.GetOutput());
+   }
 
-    return maximumError;
+   X -= Y;
+   Real_t msqRef = X.E2Norm();
+   msq    *= batchSize * nFeatures;
+   std::cout << "Maximum relative error: " << (msq - msqRef) / msqRef << std::endl;
+
+   return 0.0;
 }
 
 } // namespace DNN

@@ -25,7 +25,7 @@ namespace DNN  {
 inline void ExecuteActivationFunctionKernel(EOpenCLKernel kernel,
                                             TOpenCLMatrix & A)
 {
-   TOpenCLDevice &device = A.GetDevice();
+   const TOpenCLDevice &device = A.GetDevice();
 
    int m     = (int) A.GetNrows();
    int n     = (int) A.GetNcols();
@@ -33,7 +33,8 @@ inline void ExecuteActivationFunctionKernel(EOpenCLKernel kernel,
    cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
    cl::NDRange local(1, TOpenCLDevice::localSize);
 
-   device.EnqueueKernel(kernel, global, local, A.GetElementBuffer(), m);
+   size_t streamIndex = A.GetComputeStreamIndex();
+   device.EnqueueKernel(kernel, streamIndex, global, local, A.GetElementBuffer(), m);
 }
 
 /** Launch an OpenCL kernel that applies an activation function derivative kernel
@@ -44,15 +45,17 @@ inline void ExecuteActivationFunctionDerivativeKernel(
     TOpenCLMatrix & B,
     const TOpenCLMatrix &A)
 {
-   TOpenCLDevice &device = A.GetDevice();
+   const TOpenCLDevice &device = A.GetDevice();
 
    int m     = (int) A.GetNrows();
    int n     = (int) A.GetNcols();
 
    cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
    cl::NDRange local(1, TOpenCLDevice::localSize);
-   device.EnqueueKernel(kernel, global, local,
+   size_t streamIndex = A.GetComputeStreamIndex();
+   device.EnqueueKernel(kernel, streamIndex, global, local,
                         B.GetElementBuffer(), A.GetElementBuffer(), m);
+   B.SetComputeStreamIndex(streamIndex);
 }
 
 //____________________________________________________________________________

@@ -21,17 +21,17 @@ namespace DNN  {
 //____________________________________________________________________________
 void TOpenCL::Dropout(TOpenCLMatrix &A, OpenCLDouble_t dropoutProbability)
 {
-   TOpenCLDevice &device = A.GetDevice();
+   const TOpenCLDevice &device = A.GetDevice();
    int m     = (int) A.GetNrows();
    int n     = (int) A.GetNcols();
 
    cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
    cl::NDRange local(1, TOpenCLDevice::localSize);
 
-   device.EnqueueKernel(EOpenCLKernel::kDropout, global, local,
-                        A.GetElementBuffer(),
-                        A.GetRandomStreamBuffer(),
-                        m, dropoutProbability);
+   size_t streamIndex = A.GetComputeStreamIndex();
+   device.EnqueueKernel(EOpenCLKernel::kDropout, streamIndex,
+                        global, local, A.GetElementBuffer(),
+                        A.GetRandomStreamBuffer(), m, dropoutProbability);
 }
 
 } // namespace DNN

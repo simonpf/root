@@ -23,8 +23,8 @@ inline OpenCLDouble_t ExecuteRegularizationKernel(EOpenCLKernel kernel,
                                                   const TOpenCLMatrix & A)
 {
 
-   TOpenCLDevice    &device = A.GetDevice();
-   cl::CommandQueue queue   = device.GetQueue();
+   const TOpenCLDevice &device = A.GetDevice();
+   cl::CommandQueue     queue  = A.GetQueue();
 
    try {
 
@@ -38,11 +38,13 @@ inline OpenCLDouble_t ExecuteRegularizationKernel(EOpenCLKernel kernel,
       cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
       cl::NDRange local(1, TOpenCLDevice::localSize);
 
-      device.EnqueueKernel(kernel, global, local, A.GetElementBuffer(), m, shared, temp);
+      size_t streamIndex = A.GetComputeStreamIndex();
+      device.EnqueueKernel(kernel, streamIndex, global, local,
+                           A.GetElementBuffer(), m, shared, temp);
 
       global = cl::NDRange(1, TOpenCLDevice::localSize);
-      device.EnqueueKernel(EOpenCLKernel::kSumVector, global, local, result,
-                           n, temp, shared);
+      device.EnqueueKernel(EOpenCLKernel::kSumVector, streamIndex, global,
+                           local, result, n, temp, shared);
       OpenCLDouble_t * hostResult =
          (OpenCLDouble_t *) queue.enqueueMapBuffer(result, CL_TRUE, CL_MAP_READ,
                                                    0, sizeof(OpenCLDouble_t));
@@ -62,7 +64,7 @@ void TOpenCL::AddL1RegularizationGradients(TOpenCLMatrix & B,
                                            const TOpenCLMatrix & A,
                                            OpenCLDouble_t weightDecay)
 {
-   TOpenCLDevice &device = A.GetDevice();
+   const TOpenCLDevice &device = A.GetDevice();
 
    int m     = (int) A.GetNrows();
    int n     = (int) A.GetNcols();
@@ -70,10 +72,13 @@ void TOpenCL::AddL1RegularizationGradients(TOpenCLMatrix & B,
    cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
    cl::NDRange local(1, TOpenCLDevice::localSize);
 
+   size_t streamIndex = A.GetComputeStreamIndex();
    device.EnqueueKernel(EOpenCLKernel::kAddL1RegularizationGradients,
+                        streamIndex,
                         global, local,
                         B.GetElementBuffer(), A.GetElementBuffer(),
                         m, weightDecay);
+   B.SetComputeStreamIndex(streamIndex);
 }
 
 OpenCLDouble_t TOpenCL::L2Regularization(const TOpenCLMatrix &A)
@@ -85,7 +90,7 @@ void TOpenCL::AddL2RegularizationGradients(TOpenCLMatrix & B,
                                            const TOpenCLMatrix & A,
                                            OpenCLDouble_t weightDecay)
 {
-   TOpenCLDevice &device = A.GetDevice();
+   const TOpenCLDevice &device = A.GetDevice();
 
    int m     = (int) A.GetNrows();
    int n     = (int) A.GetNcols();
@@ -93,10 +98,13 @@ void TOpenCL::AddL2RegularizationGradients(TOpenCLMatrix & B,
    cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
    cl::NDRange local(1, TOpenCLDevice::localSize);
 
+   size_t streamIndex = A.GetComputeStreamIndex();
    device.EnqueueKernel(EOpenCLKernel::kAddL2RegularizationGradients,
+                        streamIndex,
                         global, local,
                         B.GetElementBuffer(), A.GetElementBuffer(),
                         m, weightDecay);
+   B.SetComputeStreamIndex(streamIndex);
 }
 
 } // namespace DNN

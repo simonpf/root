@@ -23,9 +23,132 @@
 namespace TMVA {
 namespace DNN  {
 
-TOpenCLDevice::TOpenCLDevice()
-    : fDevice(), fContext(), fQueue(), fProgram(), fKernels()
+// TOpenCLDeviceBuffer
+//____________________________________________________________________________
+TOpenCLDevice::TOpenCLDeviceBuffer::TOpenCLDeviceBuffer(size_t size,
+                                                        const TOpenCLDevice & device)
+    : fDevice(device)
 {
+   fBuffer = cl::Buffer(fDevice.GetContext(), CL_MEM_READ_WRITE,
+                        size * sizeof(OpenCLDouble_t));
+}
+
+// TOpenCLDeviceBuffer
+//____________________________________________________________________________
+TOpenCLDevice::TOpenCLDeviceBuffer::TOpenCLDeviceBuffer(cl::Buffer buffer,
+                                                        const TOpenCLDevice & device)
+    : fBuffer(buffer), fDevice(device)
+{
+   // Nothing to do here.
+}
+
+//____________________________________________________________________________
+auto TOpenCLDevice::TOpenCLDeviceBuffer::GetSubBuffer(size_t start,
+                                                      size_t size)
+    -> TOpenCLDeviceBuffer
+{
+   cl_int error;
+   _cl_buffer_region region;
+   region.origin = start * sizeof(OpenCLDouble_t);
+   region.size   = size  * sizeof(OpenCLDouble_t);
+
+   cl::Buffer subBuffer = fBuffer.createSubBuffer(CL_MEM_READ_WRITE,
+                                                  CL_BUFFER_CREATE_TYPE_REGION,
+                                                  (void *) &region,
+                                                  &error);
+   return TOpenCLDeviceBuffer(subBuffer, fDevice);
+}
+
+//____________________________________________________________________________
+void TOpenCLDevice::TOpenCLDeviceBuffer::SetUnconsumed()
+{
+   fConsumptionEvent = clCreateUserEvent(fDevice.GetContext()(), NULL);
+}
+
+//____________________________________________________________________________
+void TOpenCLDevice::TOpenCLDeviceBuffer::SetConsumed()
+{
+   clSetUserEventStatus(fConsumptionEvent(), CL_COMPLETE);
+}
+
+//____________________________________________________________________________
+void TOpenCLDevice::TOpenCLDeviceBuffer::SynchronizeComputation() const
+{
+   if (fConsumptionEvent()) {
+      fConsumptionEvent.wait();
+   }
+}
+
+//____________________________________________________________________________
+void TOpenCLDevice::TOpenCLDeviceBuffer::SynchronizeTransfer() const
+{
+   fTransferEvent.wait();
+}
+
+// TOpenCLHostBuffer
+//____________________________________________________________________________
+TOpenCLDevice::TOpenCLHostBuffer::TOpenCLHostBuffer(size_t size,
+                                                    cl::Context context,
+                                                    cl::CommandQueue dataQueue)
+    : fContext(context), fDataQueue(dataQueue), fSize(size)
+{
+    fBuffer = cl::Buffer(fContext, CL_MEM_ALLOC_HOST_PTR,
+                         size * sizeof(OpenCLDouble_t));
+    fDataPointer = (OpenCLDouble_t *) fDataQueue.enqueueMapBuffer(
+        fBuffer,
+        CL_TRUE,
+        CL_MEM_READ_WRITE,
+        0, size * sizeof(OpenCLDouble_t));
+}
+
+//____________________________________________________________________________
+TOpenCLDevice::TOpenCLHostBuffer::TOpenCLHostBuffer(TOpenCLHostBuffer &&other)
+    : fBuffer(std::move(other.fBuffer)), fContext(std::move(other.fContext)),
+      fDataPointer(other.fDataPointer), fDataQueue(std::move(other.fDataQueue)),
+      fSize(other.fSize)
+{
+   // Nothing to do here.
+}
+
+//____________________________________________________________________________
+void TOpenCLDevice::TOpenCLHostBuffer::Lock()
+{
+   fLock.acquire(fMutex);
+}
+
+//____________________________________________________________________________
+void TOpenCLDevice::TOpenCLHostBuffer::Release()
+{
+   fLock.release();
+}
+
+//____________________________________________________________________________
+void TOpenCLDevice::TOpenCLHostBuffer::CopyTo(TOpenCLDeviceBuffer & deviceBuffer)
+{
+   cl::Event transferEvent;
+   fDataQueue.enqueueWriteBuffer(deviceBuffer.GetBuffer(), CL_FALSE, 0,
+                                 fSize * sizeof(OpenCLDouble_t), (void*) fDataPointer, nullptr, &transferEvent),
+   deviceBuffer.SetTransferEvent(transferEvent);
+}
+
+//____________________________________________________________________________
+OpenCLDouble_t & TOpenCLDevice::TOpenCLHostBuffer::operator[](size_t index)
+{
+   return fDataPointer[index];
+}
+
+//____________________________________________________________________________
+OpenCLDouble_t TOpenCLDevice::TOpenCLHostBuffer::operator[](size_t index) const
+{
+   return fDataPointer[index];
+}
+
+// TOpenCLDevice
+//____________________________________________________________________________
+TOpenCLDevice::TOpenCLDevice(size_t nComputeQueues)
+    : fDevice(), fContext(), fProgram(), fKernels(), fNComputeQueues(nComputeQueues)
+{
+   std::cout << "Constructing opencl device." << std::endl;
    try {
        std::vector<cl::Platform> platforms;
       cl::Platform::get(&platforms);
@@ -57,11 +180,24 @@ TOpenCLDevice::TOpenCLDevice()
       }
       fDevice = devices[0];
 
-      fQueue   = cl::CommandQueue(fContext, fDevice);
+      for (size_t i = 0; i < fNComputeQueues; i++) {
+         fQueues.push_back(cl::CommandQueue(fContext, fDevice));
+      }
+
       CompileKernels();
    } catch(cl::Error error) {
       std::cout << "Error initializing OpenCL device: " << error.what() << std::endl;
    }
+}
+
+TOpenCLDevice::TOpenCLDeviceBuffer TOpenCLDevice::CreateDeviceBuffer(size_t size)
+{
+   return TOpenCLDeviceBuffer(size, *this);
+}
+
+TOpenCLDevice::TOpenCLHostBuffer TOpenCLDevice::CreateHostBuffer(size_t size)
+{
+   return TOpenCLHostBuffer(size, fContext, cl::CommandQueue(fContext, fDevice));
 }
 
 void TOpenCLDevice::CompileKernels()
@@ -76,7 +212,6 @@ void TOpenCLDevice::CompileKernels()
    cl::Program program(fContext, source, false);
 
    try {
-
 
       std::cout << "Arguments: -I " STRINGIFY(__KERNEL_INCLUDE_DIRS__) << std::endl;
       program.build(devices, "-cl-nv-verbose -I " STRINGIFY(__KERNEL_INCLUDE_DIRS__));

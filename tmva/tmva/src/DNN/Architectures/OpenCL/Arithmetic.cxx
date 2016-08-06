@@ -33,7 +33,8 @@ void TOpenCL::Multiply(TOpenCLMatrix & C,
 
    cl_int error;
    error =  clblasSetup();
-   cl_command_queue queue = C.GetDevice().GetQueue()();
+   size_t streamIndex = A.GetComputeStreamIndex();
+   cl_command_queue queue = A.GetQueue()();
    cl_event event = NULL;
 
    error = clblasDgemm(clblasColumnMajor, clblasNoTrans, clblasNoTrans,
@@ -43,6 +44,7 @@ void TOpenCL::Multiply(TOpenCLMatrix & C,
                      C.GetElementBuffer()(), 0, m,
                      1, &queue, 0, NULL, &event);
    A.GetDevice().HandleError(error);
+   C.SetComputeStreamIndex(streamIndex);
 }
 
 //____________________________________________________________________________
@@ -56,7 +58,8 @@ void TOpenCL::TransposeMultiply(TOpenCLMatrix & C,
 
    cl_int error;
    error =  clblasSetup();
-   cl_command_queue queue = C.GetDevice().GetQueue()();
+   size_t streamIndex     = A.GetComputeStreamIndex();
+   cl_command_queue queue = A.GetQueue()();
    cl_event event = NULL;
 
    error = clblasDgemm(clblasColumnMajor, clblasTrans, clblasNoTrans,
@@ -66,28 +69,31 @@ void TOpenCL::TransposeMultiply(TOpenCLMatrix & C,
                      C.GetElementBuffer()(), 0, m,
                      1, &queue, 0, NULL, &event);
    A.GetDevice().HandleError(error);
+   C.SetComputeStreamIndex(streamIndex);
 }
 
 //____________________________________________________________________________
 void TOpenCL::Hadamard(TOpenCLMatrix & B,
                        const TOpenCLMatrix & A)
 {
-   TOpenCLDevice &device    = B.GetDevice();
+   const TOpenCLDevice &device    = B.GetDevice();
 
    int m     = (int) A.GetNrows();
    int n     = (int) A.GetNcols();
 
    cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
    cl::NDRange local(1, TOpenCLDevice::localSize);
-   device.EnqueueKernel(EOpenCLKernel::kHadamard, global, local,
+   size_t streamIndex = A.GetComputeStreamIndex();
+   device.EnqueueKernel(EOpenCLKernel::kHadamard, streamIndex, global, local,
                         B.GetElementBuffer(), A.GetElementBuffer(), m, n);
+   B.SetComputeStreamIndex(streamIndex);
 }
 
 //____________________________________________________________________________
 void TOpenCL::SumColumns(TOpenCLMatrix & B,
                          const TOpenCLMatrix & A)
 {
-   TOpenCLDevice &device = B.GetDevice();
+   const TOpenCLDevice &device = B.GetDevice();
 
    int m     = (int) A.GetNrows();
    int n     = (int) A.GetNcols();
@@ -95,9 +101,12 @@ void TOpenCL::SumColumns(TOpenCLMatrix & B,
    cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
    cl::NDRange local(1, TOpenCLDevice::localSize);
 
-   device.EnqueueKernel(EOpenCLKernel::kSumColumns, global, local,
+   size_t streamIndex = A.GetComputeStreamIndex();
+   device.EnqueueKernel(EOpenCLKernel::kSumColumns, streamIndex,
+                        global, local,
                         B.GetElementBuffer(), A.GetElementBuffer(), m, n,
                         cl::Local(TOpenCLDevice::localSize * sizeof(OpenCLDouble_t)));
+   B.SetComputeStreamIndex(streamIndex);
 }
 
 } // namespace DNN

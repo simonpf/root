@@ -1,5 +1,5 @@
 // @(#)root/tmva/tmva/dnn:$Id$
-// Author: Simon Pfreundschuh 05/07/16
+// Author: Simon Pfreundschuh 20/07/16
 
 /*************************************************************************
  * Copyright (C) 2016, Simon Pfreundschuh                                *
@@ -20,8 +20,11 @@
 
 #include <utility>
 
+#include "TMVA/DNN/DeviceDataLoader.h"
+
 #include "OpenCL/Types.h"
 #include "OpenCL/OpenCLMatrix.h"
+#include "OpenCL/OpenCLDevice.h"
 #include "CL/cl.h"
 
 namespace TMVA
@@ -38,11 +41,16 @@ namespace DNN
  */
 class TOpenCL
 {
-
 public:
 
-    using Scalar_t   = OpenCLDouble_t;
-    using Matrix_t   = TOpenCLMatrix;
+   using Scalar_t = OpenCLDouble_t;
+   using Matrix_t = TOpenCLMatrix;
+   using Device_t = TOpenCLDevice;
+
+   static TOpenCLDevice CreateDefaultDevice()
+   {
+      return TOpenCLDevice();
+   }
 
    //____________________________________________________________________________
    //
@@ -276,6 +284,13 @@ public:
    /** Compute the sum of all elements in \p A */
    static OpenCLDouble_t Sum(const TOpenCLMatrix &A);
 };
+
+template <>
+void TDeviceDataLoader<TOpenCL, MatrixInput_t>::CopyBatch(
+    const MatrixInput_t & data,
+    IndexIterator_t sampleIndexIterator,
+    size_t batchSize,
+    TOpenCLDevice::HostBuffer_t & buffer);
 
 } // namespace DNN
 } // namespace TMVA
