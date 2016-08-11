@@ -24,7 +24,7 @@ inline OpenCLDouble_t ExecuteRegularizationKernel(EOpenCLKernel kernel,
 {
 
    const TOpenCLDevice &device = A.GetDevice();
-   cl::CommandQueue     queue  = A.GetQueue();
+   cl::CommandQueue     queue  = A.GetComputeQueue();
 
    try {
 
@@ -38,12 +38,11 @@ inline OpenCLDouble_t ExecuteRegularizationKernel(EOpenCLKernel kernel,
       cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
       cl::NDRange local(1, TOpenCLDevice::localSize);
 
-      size_t streamIndex = A.GetComputeStreamIndex();
-      device.EnqueueKernel(kernel, streamIndex, global, local,
+      device.EnqueueKernel(kernel, queue, global, local,
                            A.GetElementBuffer(), m, shared, temp);
 
       global = cl::NDRange(1, TOpenCLDevice::localSize);
-      device.EnqueueKernel(EOpenCLKernel::kSumVector, streamIndex, global,
+      device.EnqueueKernel(EOpenCLKernel::kSumVector, queue, global,
                            local, result, n, temp, shared);
       OpenCLDouble_t * hostResult =
          (OpenCLDouble_t *) queue.enqueueMapBuffer(result, CL_TRUE, CL_MAP_READ,
@@ -72,13 +71,12 @@ void TOpenCL::AddL1RegularizationGradients(TOpenCLMatrix & B,
    cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
    cl::NDRange local(1, TOpenCLDevice::localSize);
 
-   size_t streamIndex = A.GetComputeStreamIndex();
+   cl::CommandQueue queue = A.GetComputeQueue();
    device.EnqueueKernel(EOpenCLKernel::kAddL1RegularizationGradients,
-                        streamIndex,
-                        global, local,
+                        queue, global, local,
                         B.GetElementBuffer(), A.GetElementBuffer(),
                         m, weightDecay);
-   B.SetComputeStreamIndex(streamIndex);
+   B.SetComputeQueue(queue);
 }
 
 OpenCLDouble_t TOpenCL::L2Regularization(const TOpenCLMatrix &A)
@@ -98,13 +96,12 @@ void TOpenCL::AddL2RegularizationGradients(TOpenCLMatrix & B,
    cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
    cl::NDRange local(1, TOpenCLDevice::localSize);
 
-   size_t streamIndex = A.GetComputeStreamIndex();
+   cl::CommandQueue queue = A.GetComputeQueue();
    device.EnqueueKernel(EOpenCLKernel::kAddL2RegularizationGradients,
-                        streamIndex,
-                        global, local,
+                        queue, global, local,
                         B.GetElementBuffer(), A.GetElementBuffer(),
                         m, weightDecay);
-   B.SetComputeStreamIndex(streamIndex);
+   B.SetComputeQueue(queue);
 }
 
 } // namespace DNN

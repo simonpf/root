@@ -129,4 +129,9 @@ if (OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)
   ROOT_EXECUTABLE(testDataLoaderOpenCL TestDataLoaderOpenCL.cxx
                   LIBRARIES ${Libraries}  dnn_opencl tbb ${OpenCL_LIBRARIES} clBLAS clRNG)
   ROOT_ADD_TEST(TMVA-DNN-TestDataLoaderOpenCL COMMAND testDataLoaderOpenCL)
+
+  # DNN - Minimization OpenCL
+  ROOT_EXECUTABLE(testMinimizationOpenCL TestMinimizationOpenCL.cxx
+                  LIBRARIES ${Libraries}  dnn_opencl tbb ${OpenCL_LIBRARIES} clBLAS clRNG)
+  ROOT_ADD_TEST(TMVA-DNN-TestMinimizationOpenCL COMMAND testMinimizationOpenCL)
 endif(OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)

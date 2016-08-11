@@ -24,6 +24,7 @@
 #include <tbb/mutex.h>
 #include <vector>
 #include <tuple>
+#include <iostream>
 
 namespace TMVA {
 namespace DNN  {
@@ -31,6 +32,8 @@ namespace DNN  {
 class TOpenCLMatrix;
 
 enum class EOpenCLKernel : int {
+
+   // Arithmetic.
    kHadamard                  = 0,
    kSumColumns                = 1,
    kSumVector                 = 2,
@@ -38,35 +41,38 @@ enum class EOpenCLKernel : int {
    // Propagation.
    kAddRowWise                = 3,
 
+   // Copy.
+   kCopy                      = 4,
+
    // Loss Functions.
-   kSquaredErrorColumns       = 4,
-   kMeanSquaredErrorGradients = 5,
-   kCrossEntropyColumns       = 6,
-   kCrossEntropyGradients     = 7,
+   kSquaredErrorColumns       = 5,
+   kMeanSquaredErrorGradients = 6,
+   kCrossEntropyColumns       = 7,
+   kCrossEntropyGradients     = 8,
 
    // Activation Functions.
-   kIdentityDerivative        = 8,
-   kRelu                      = 9,
-   kReluDerivative            = 10,
-   kSigmoid                   = 11,
-   kSigmoidDerivative         = 12,
-   kTanh                      = 13,
-   kTanhDerivative            = 14,
-   kSymmetricRelu             = 15,
-   kSymmetricReluDerivative   = 16,
-   kSoftSign                  = 17,
-   kSoftSignDerivative        = 18,
-   kGauss                     = 19,
-   kGaussDerivative           = 20,
+   kIdentityDerivative        = 9,
+   kRelu                      = 10,
+   kReluDerivative            = 11,
+   kSigmoid                   = 12,
+   kSigmoidDerivative         = 13,
+   kTanh                      = 14,
+   kTanhDerivative            = 15,
+   kSymmetricRelu             = 16,
+   kSymmetricReluDerivative   = 17,
+   kSoftSign                  = 18,
+   kSoftSignDerivative        = 19,
+   kGauss                     = 20,
+   kGaussDerivative           = 21,
 
    // Regularization
-   kL1Regularization             = 21,
-   kAddL1RegularizationGradients = 22,
-   kL2Regularization             = 23,
-   kAddL2RegularizationGradients = 24,
+   kL1Regularization             = 22,
+   kAddL1RegularizationGradients = 23,
+   kL2Regularization             = 24,
+   kAddL2RegularizationGradients = 25,
 
    // Dropout
-   kDropout = 25
+   kDropout = 26
 };
 
 class TOpenCLDevice
@@ -76,81 +82,12 @@ private:
    cl::Device       fDevice;
    cl::Context      fContext;
    cl::Program      fProgram;
-   cl::Kernel       fKernels[26];
+   cl::Kernel       fKernels[27];
    std::vector<cl::CommandQueue> fQueues;
 
    size_t fNComputeQueues;
 
 public:
-
-   class TOpenCLDeviceBuffer
-   {
-   private:
-
-      cl::Buffer  fBuffer;
-      cl::Event   fConsumptionEvent;
-      cl::Event   fTransferEvent;
-      const TOpenCLDevice & fDevice;
-
-      TOpenCLDeviceBuffer(size_t size, const TOpenCLDevice & device);
-      TOpenCLDeviceBuffer(cl::Buffer buffer, const TOpenCLDevice & device);
-      TOpenCLDeviceBuffer(const TOpenCLDeviceBuffer  &)             = delete;
-      TOpenCLDeviceBuffer & operator=(const TOpenCLDeviceBuffer  &) = delete;
-      TOpenCLDeviceBuffer & operator=(      TOpenCLDeviceBuffer &&) = delete;
-
-      friend class TOpenCLDevice;
-
-   public:
-
-      TOpenCLDeviceBuffer(TOpenCLDeviceBuffer &&)                   = default;
-
-      void SetTransferEvent(cl::Event event) {fTransferEvent = event;}
-
-      const TOpenCLDevice & GetDevice() const {return fDevice;}
-      cl::Buffer GetBuffer() const {return fBuffer;}
-      TOpenCLDeviceBuffer GetSubBuffer(size_t start, size_t size);
-      void SetUnconsumed();
-      void SetConsumed();
-      void SynchronizeComputation() const;
-      void SynchronizeTransfer()    const;
-   };
-
-   class TOpenCLHostBuffer
-   {
-   private:
-
-       cl::Buffer              fBuffer;
-       cl::Context             fContext;
-       cl::CommandQueue        fDataQueue;
-       OpenCLDouble_t *        fDataPointer;
-       size_t                  fSize;
-       tbb::mutex              fMutex;
-       tbb::mutex::scoped_lock fLock;
-
-       TOpenCLHostBuffer(size_t size,
-                         cl::Context context,
-                         cl::CommandQueue dataQueue);
-       TOpenCLHostBuffer(const TOpenCLHostBuffer &)             = delete;
-       TOpenCLHostBuffer & operator=(const TOpenCLHostBuffer &) = delete;
-       TOpenCLHostBuffer & operator=(TOpenCLHostBuffer &&)      = delete;
-
-       friend class TOpenCLDevice;
-
-   public:
-
-       TOpenCLHostBuffer(TOpenCLHostBuffer &&);
-
-       void Lock();
-       void Release();
-       void CopyTo(TOpenCLDeviceBuffer & deviceBuffer);
-
-       OpenCLDouble_t & operator[](size_t index);
-       OpenCLDouble_t   operator[](size_t index) const;
-
-   };
-
-   using HostBuffer_t   = TOpenCLHostBuffer;
-   using DeviceBuffer_t = TOpenCLDeviceBuffer;
 
    static constexpr size_t localSizeX = 16;
    static constexpr size_t localSizeY = 16;
@@ -166,16 +103,13 @@ public:
    inline const char * GetErrorString(cl_int error) const;
    inline void PrintBuildError(cl::Program program) const;
 
-   TOpenCLHostBuffer   CreateHostBuffer(size_t size);
-   TOpenCLDeviceBuffer CreateDeviceBuffer(size_t size);
-
    cl::Context      GetContext()       const {return fContext;}
    cl::CommandQueue GetQueue(size_t i) const {return fQueues[i];}
    cl::Device       GetDevice()        const {return fDevice;}
 
    template<typename ...Args>
    inline void EnqueueKernel(EOpenCLKernel kernelEnum,
-                             size_t computeStreamIndex,
+                             cl::CommandQueue,
                              cl::NDRange globalSize,
                              cl::NDRange localSize,
                              Args ...args) const;
@@ -192,8 +126,8 @@ private:
    >
    struct SetArguments {
       static inline void execute(cl::Kernel kernel, const TupleType &arguments) {
-          kernel.setArg(index, std::get<index>(arguments));
-          SetArguments<TupleType, size, index+1>::execute(kernel, arguments);
+         kernel.setArg(index, std::get<index>(arguments));
+         SetArguments<TupleType, size, index+1>::execute(kernel, arguments);
        }
    };
 
@@ -297,7 +231,7 @@ inline const char * TOpenCLDevice::GetErrorString(cl_int error) const
 
 template <class ...Args>
 inline void TOpenCLDevice::EnqueueKernel(EOpenCLKernel kernelEnum,
-                                         size_t streamIndex,
+                                         cl::CommandQueue queue,
                                          cl::NDRange global,
                                          cl::NDRange local,
                                          Args ...args) const
@@ -305,8 +239,13 @@ inline void TOpenCLDevice::EnqueueKernel(EOpenCLKernel kernelEnum,
    cl::Kernel kernel = fKernels[static_cast<int>(kernelEnum)];
    auto arguments = std::make_tuple(args...);
 
-   SetArguments<decltype(arguments)>::execute(kernel, arguments);
-   fQueues[streamIndex].enqueueNDRangeKernel(kernel, cl::NullRange, global, local);
+   try {
+      SetArguments<decltype(arguments)>::execute(kernel, arguments);
+      queue.enqueueNDRangeKernel(kernel, cl::NullRange, global, local);
+   } catch (cl::Error error) {
+      HandleError(error.err());
+   }
+
 }
 
 } // namespace DNN

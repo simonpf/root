@@ -77,8 +77,8 @@ public:
     TCudaMatrix GetInput()
     {
         size_t size = fBatchSize * fNinputFeatures;
-        return TCudaMatrix(TCudaDeviceBuffer(fInputMatrixData, size, fDataStream),
-                           fBatchSize, fNinputFeatures);
+        return TCudaMatrix(fBatchSize, fNinputFeatures,
+                           TCudaDeviceBuffer(fInputMatrixData, size, fDataStream));
     }
 
     /** Return the outpur data as a TCudaMatrix. Also forwards the data stream in
@@ -87,8 +87,8 @@ public:
     TCudaMatrix GetOutput()
     {
         size_t size = fBatchSize * fNoutputFeatures;
-        return TCudaMatrix(TCudaDeviceBuffer(fOutputMatrixData, size, fDataStream),
-                           fBatchSize, fNoutputFeatures);
+        return TCudaMatrix(fBatchSize, fNoutputFeatures,
+                           TCudaDeviceBuffer(fOutputMatrixData, size, fDataStream));
     }
 };
 

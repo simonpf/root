@@ -155,8 +155,12 @@ TBatch<Architecture_t>::TBatch(Matrix_t && inputMatrix, Matrix_t && outputMatrix
 //______________________________________________________________________________
 template<typename Data_t, typename Architecture_t>
 TDataLoader<Data_t, Architecture_t>::TDataLoader(
-    const Data_t & data, size_t nSamples, size_t batchSize,
-    size_t nInputFeatures, size_t nOutputFeatures, size_t nStreams)
+    const Data_t & data,
+    size_t nSamples,
+    size_t batchSize,
+    size_t nInputFeatures,
+    size_t nOutputFeatures,
+    size_t nStreams)
     : fData(data), fNSamples(nSamples), fBatchSize(batchSize),
       fNInputFeatures(nInputFeatures), fNOutputFeatures(nOutputFeatures),
       fBatchIndex(0), fNStreams(nStreams), fDeviceBuffers(), fHostBuffers(),
@@ -204,8 +208,8 @@ TBatch<Architecture_t> TDataLoader<Data_t, Architecture_t>::GetBatch()
    CopyOutput(outputHostBuffer, sampleIndexIterator, fBatchSize);
 
    deviceBuffer.CopyFrom(hostBuffer);
-   Matrix_t  inputMatrix(inputDeviceBuffer,  fBatchSize, fNInputFeatures);
-   Matrix_t outputMatrix(outputDeviceBuffer, fBatchSize, fNOutputFeatures);
+   Matrix_t  inputMatrix(fBatchSize, fNInputFeatures, inputDeviceBuffer);
+   Matrix_t outputMatrix(fBatchSize, fNOutputFeatures, outputDeviceBuffer);
 
    fBatchIndex++;
    return TBatch<Architecture_t>(std::move(inputMatrix), std::move(outputMatrix));

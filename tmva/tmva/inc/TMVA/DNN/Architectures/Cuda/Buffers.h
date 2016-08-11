@@ -37,8 +37,8 @@ class TCudaHostBuffer
 private:
 
    size_t                          fOffset;
-   mutable cudaStream_t            fComputeStream;
    std::shared_ptr<CudaDouble_t *> fDevicePointer;
+   mutable cudaStream_t            fComputeStream;
 
    struct TDestructor
    {
@@ -76,6 +76,9 @@ public:
    {
       return (*fDevicePointer + fOffset)[index];
    }
+
+   void SetComputeStream(cudaStream_t stream) const {fComputeStream = stream;}
+   
 
 };
 
@@ -122,7 +125,7 @@ public:
    operator CudaDouble_t * () const;
 
    void CopyFrom(const TCudaHostBuffer &) const;
-   void CopyTo(const TCudaHostBuffer &)   const;
+   void   CopyTo(const TCudaHostBuffer &) const;
 
    cudaStream_t GetComputeStream() const {return fComputeStream;}
    void SetComputeStream(cudaStream_t stream) {fComputeStream = stream;}

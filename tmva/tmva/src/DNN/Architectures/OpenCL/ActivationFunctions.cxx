@@ -33,8 +33,8 @@ inline void ExecuteActivationFunctionKernel(EOpenCLKernel kernel,
    cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
    cl::NDRange local(1, TOpenCLDevice::localSize);
 
-   size_t streamIndex = A.GetComputeStreamIndex();
-   device.EnqueueKernel(kernel, streamIndex, global, local, A.GetElementBuffer(), m);
+   cl::CommandQueue queue = A.GetComputeQueue();
+   device.EnqueueKernel(kernel, queue, global, local, A.GetElementBuffer(), m);
 }
 
 /** Launch an OpenCL kernel that applies an activation function derivative kernel
@@ -52,19 +52,21 @@ inline void ExecuteActivationFunctionDerivativeKernel(
 
    cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
    cl::NDRange local(1, TOpenCLDevice::localSize);
-   size_t streamIndex = A.GetComputeStreamIndex();
-   device.EnqueueKernel(kernel, streamIndex, global, local,
+   cl::CommandQueue queue = A.GetComputeQueue();
+   device.EnqueueKernel(kernel, queue, global, local,
                         B.GetElementBuffer(), A.GetElementBuffer(), m);
-   B.SetComputeStreamIndex(streamIndex);
+   B.SetComputeQueue(queue);
 }
 
 //____________________________________________________________________________
 void TOpenCL::Identity(TOpenCLMatrix & /*A*/) {}
 
 //____________________________________________________________________________
-void TOpenCL::IdentityDerivative(TOpenCLMatrix &B)
+void TOpenCL::IdentityDerivative(TOpenCLMatrix & B,
+                                 const TOpenCLMatrix & A)
 {
-   ExecuteActivationFunctionKernel(EOpenCLKernel::kIdentityDerivative, B);
+   ExecuteActivationFunctionDerivativeKernel(EOpenCLKernel::kIdentityDerivative,
+                                             B, A);
 }
 
 //____________________________________________________________________________

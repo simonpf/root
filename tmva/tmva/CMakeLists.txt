@@ -52,6 +52,7 @@ set(dnn_cuda_files src/DNN/Architectures/Cuda/ActivationFunctions.cu
 set(dnn_opencl_files src/DNN/Architectures/OpenCL.cxx
                      src/DNN/Architectures/OpenCL/Arithmetic.cxx
                      src/DNN/Architectures/OpenCL/ActivationFunctions.cxx
+                     src/DNN/Architectures/OpenCL/Buffers.cxx
                      src/DNN/Architectures/OpenCL/Initialization.cxx
                      src/DNN/Architectures/OpenCL/LossFunctions.cxx
                      src/DNN/Architectures/OpenCL/Propagation.cxx

@@ -119,7 +119,7 @@ void TCudaDeviceBuffer::CopyTo(const TCudaHostBuffer &buffer) const
 {
    cudaMemcpyAsync(*this, buffer, fSize * sizeof(CudaDouble_t),
                    cudaMemcpyDeviceToHost, fComputeStream);
-   buffer.fComputeStream = fComputeStream;
+   buffer.SetComputeStream(fComputeStream);
 }
 
 } // TMVA

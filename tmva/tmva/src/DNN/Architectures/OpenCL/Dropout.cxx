@@ -28,8 +28,8 @@ void TOpenCL::Dropout(TOpenCLMatrix &A, OpenCLDouble_t dropoutProbability)
    cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
    cl::NDRange local(1, TOpenCLDevice::localSize);
 
-   size_t streamIndex = A.GetComputeStreamIndex();
-   device.EnqueueKernel(EOpenCLKernel::kDropout, streamIndex,
+   cl::CommandQueue queue = A.GetComputeQueue();
+   device.EnqueueKernel(EOpenCLKernel::kDropout, queue,
                         global, local, A.GetElementBuffer(),
                         A.GetRandomStreamBuffer(), m, dropoutProbability);
 }

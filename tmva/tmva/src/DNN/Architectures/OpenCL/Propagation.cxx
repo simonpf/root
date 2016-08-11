@@ -32,8 +32,7 @@ void TOpenCL::MultiplyTranspose(TOpenCLMatrix & C,
 
    cl_int error;
    error =  clblasSetup();
-   size_t streamIndex = A.GetComputeStreamIndex();
-   cl_command_queue queue = A.GetQueue()();
+   cl_command_queue queue = A.GetComputeQueue()();
    cl_event event = NULL;
 
    error = clblasDgemm(clblasColumnMajor, clblasNoTrans, clblasTrans,
@@ -43,7 +42,7 @@ void TOpenCL::MultiplyTranspose(TOpenCLMatrix & C,
                        C.GetElementBuffer()(), 0, m,
                        1, &queue, 0, NULL, &event);
    A.GetDevice().HandleError(error);
-   C.SetComputeStreamIndex(streamIndex);
+   C.SetComputeQueue(A.GetComputeQueue());
 }
 
 //____________________________________________________________________________
@@ -58,11 +57,11 @@ void TOpenCL::AddRowWise(TOpenCLMatrix &B,
    cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
    cl::NDRange local(1, TOpenCLDevice::localSize);
 
-   size_t streamIndex = A.GetComputeStreamIndex();
-   device.EnqueueKernel(EOpenCLKernel::kAddRowWise, streamIndex,
+   cl::CommandQueue queue = B.GetComputeQueue();
+   device.EnqueueKernel(EOpenCLKernel::kAddRowWise, queue,
                         global, local, B.GetElementBuffer(),
                         A.GetElementBuffer(), m);
-   B.SetComputeStreamIndex(streamIndex);
+   B.SetComputeQueue(queue);
 }
 
 //____________________________________________________________________________

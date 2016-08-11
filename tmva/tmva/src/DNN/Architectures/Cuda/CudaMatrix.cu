@@ -64,8 +64,7 @@ TCudaMatrix::TCudaMatrix(const TMatrixT<CudaDouble_t> & Host)
 }
 
 //____________________________________________________________________________
-TCudaMatrix::TCudaMatrix(TCudaDeviceBuffer buffer,
-                         size_t m, size_t n)
+TCudaMatrix::TCudaMatrix(size_t m, size_t n, TCudaDeviceBuffer buffer)
     : fNRows(m), fNCols(n), fElementBuffer(buffer)
 {
    InitializeCuda();

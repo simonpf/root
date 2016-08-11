@@ -19,12 +19,12 @@
 #define TMVA_DNN_ARCHITECTURES_OPENCL
 
 #include <utility>
-
-#include "TMVA/DNN/DeviceDataLoader.h"
+#include <memory>
 
 #include "OpenCL/Types.h"
 #include "OpenCL/OpenCLMatrix.h"
 #include "OpenCL/OpenCLDevice.h"
+#include "OpenCL/Buffers.h"
 #include "CL/cl.h"
 
 namespace TMVA
@@ -41,16 +41,23 @@ namespace DNN
  */
 class TOpenCL
 {
+
+private:
+
+   /** Provides an OpenCL default device and context to be used if no unified
+    *  device handling is available. Creates the device only if requested. */
+   static std::shared_ptr<TOpenCLDevice> fDefaultDevice;
+
 public:
 
    using Scalar_t = OpenCLDouble_t;
    using Matrix_t = TOpenCLMatrix;
-   using Device_t = TOpenCLDevice;
+   using DeviceBuffer_t = TOpenCLDeviceBuffer;
+   using HostBuffer_t   = TOpenCLHostBuffer;
 
-   static TOpenCLDevice CreateDefaultDevice()
-   {
-      return TOpenCLDevice();
-   }
+   /** Return a reference to the default device or create it if it has not
+    *  yet been created. */
+   static std::shared_ptr<TOpenCLDevice> GetDefaultDevice();
 
    //____________________________________________________________________________
    //
@@ -98,6 +105,9 @@ public:
    static void ScaleAdd(TOpenCLMatrix & A,
                         const TOpenCLMatrix & B,
                         Scalar_t beta = 1.0);
+
+   static void Copy(TOpenCLMatrix & B,
+                    const TOpenCLMatrix & A);
    ///@}
 
    //____________________________________________________________________________
@@ -113,7 +123,8 @@ public:
     */
    ///@{
    static void Identity(TOpenCLMatrix & B);
-   static void IdentityDerivative(TOpenCLMatrix & B);
+   static void IdentityDerivative(TOpenCLMatrix & B,
+                                  const TOpenCLMatrix & A);
 
    static void Relu(TOpenCLMatrix & B);
    static void ReluDerivative(TOpenCLMatrix & B,
@@ -284,13 +295,6 @@ public:
    /** Compute the sum of all elements in \p A */
    static OpenCLDouble_t Sum(const TOpenCLMatrix &A);
 };
-
-template <>
-void TDeviceDataLoader<TOpenCL, MatrixInput_t>::CopyBatch(
-    const MatrixInput_t & data,
-    IndexIterator_t sampleIndexIterator,
-    size_t batchSize,
-    TOpenCLDevice::HostBuffer_t & buffer);
 
 } // namespace DNN
 } // namespace TMVA

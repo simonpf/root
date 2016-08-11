@@ -81,7 +81,7 @@ namespace DNN
 
     /*! Generate a random batch as input for a neural net. */
     template <typename MatrixType>
-        void copyMatrix(MatrixType &X, const MatrixType &Y)
+        void copyMatrix(MatrixType &X, MatrixType &Y)
     {
         size_t m,n;
         m = X.GetNrows();

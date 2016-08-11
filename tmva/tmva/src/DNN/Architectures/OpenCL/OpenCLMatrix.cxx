@@ -18,37 +18,27 @@
 namespace TMVA {
 namespace DNN  {
 
-cl::Buffer    TOpenCLMatrix::fRandomStreams{};
-size_t        TOpenCLMatrix::fNStreams = 0;
+cl::Buffer TOpenCLMatrix::fRandomStreams{};
+size_t     TOpenCLMatrix::fNStreams = 0;
 
+//____________________________________________________________________________
 TOpenCLMatrix::TOpenCLMatrix(size_t nRows,
-                             size_t nCols,
-                             const TOpenCLDevice & device,
-                             size_t computeStreamIndex)
-    : fDevice(device), fNRows(nRows), fNCols(nCols), fNElements(nRows * nCols),
-      fComputeStreamIndex(computeStreamIndex)
+                             size_t nCols)
+    : fNRows(nRows), fNCols(nCols), fNElements(nRows * nCols),
+      fElementBuffer(nRows * nCols)
 {
    if (fNElements > 0) {
-      try {
-         fElementBuffer = cl::Buffer(fDevice.GetContext(), CL_MEM_READ_WRITE,
-                                     fNElements * sizeof(OpenCLDouble_t));
-      } catch (cl::Error error) {
-         std::cout << "Error allocating TOpenCLMatrix: 1 " << error.what() << std::endl;
-         std::cout << nRows << " x " << nCols << std::endl;
-         fDevice.HandleError(error.err());
-      }
+      InitializeRandomStreams();
    }
-   InitializeRandomStreams();
 }
 
-TOpenCLMatrix::TOpenCLMatrix(const TMatrixT<OpenCLDouble_t> & A,
-                             const TOpenCLDevice & device,
-                             size_t computeStreamIndex)
-    : fDevice(device), fNRows(A.GetNrows()), fNCols(A.GetNcols()),
-      fNElements(A.GetNoElements()), fComputeStreamIndex(computeStreamIndex)
+//____________________________________________________________________________
+TOpenCLMatrix::TOpenCLMatrix(const TMatrixT<OpenCLDouble_t> & A)
+    : fNRows(A.GetNrows()), fNCols(A.GetNcols()), fNElements(A.GetNoElements()),
+      fElementBuffer(A.GetNoElements())
 {
    if (fNElements > 0) {
-      OpenCLDouble_t * buffer = new OpenCLDouble_t[fNRows * fNCols];
+      TOpenCLHostBuffer buffer(fNElements);
       size_t bufferIndex = 0;
       for (size_t j = 0; j < fNCols; j++) {
          for (size_t i = 0; i < fNRows; i++) {
@@ -56,45 +46,29 @@ TOpenCLMatrix::TOpenCLMatrix(const TMatrixT<OpenCLDouble_t> & A,
             bufferIndex++;
          }
       }
-
-      try {
-         fElementBuffer = cl::Buffer(fDevice.GetContext(),
-                                     CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
-                                     fNElements * sizeof(OpenCLDouble_t), buffer);
-      } catch (cl::Error error) {
-         std::cout << "Error allocating TOpenCLMatrix: 2 " << error.what()
-                   << std::endl << std::endl;
-         fDevice.HandleError(error.err());
-      }
-
-      delete[] buffer;
+      fElementBuffer.CopyFrom(buffer);
    }
-   InitializeRandomStreams();
+   if (fNElements > 0) {
+      InitializeRandomStreams();
+   }
 }
 
+//____________________________________________________________________________
 TOpenCLMatrix::TOpenCLMatrix(size_t nRows,
                              size_t nCols,
-                             const DeviceBuffer_t & buffer,
-                             size_t computeStreamIndex)
-    : fDevice(buffer.GetDevice()), fNRows(nRows), fNCols(nCols),
-      fNElements(nRows * nCols), fElementBuffer(buffer.GetBuffer()),
-      fComputeStreamIndex(computeStreamIndex)
+                             const TOpenCLDeviceBuffer & buffer)
+    : fNRows(nRows), fNCols(nCols), fNElements(nRows * nCols),
+      fElementBuffer(buffer)
 {
    // Nothing to do here.
 }
 
+//____________________________________________________________________________
 TOpenCLMatrix::operator TMatrixT<OpenCLDouble_t>() const
 {
-   OpenCLDouble_t *buffer = new OpenCLDouble_t[fNRows * fNCols];
-
-   std::cout << "element buffer " << fElementBuffer() << std::endl;
-   try{
-   fDevice.GetQueue(0).enqueueReadBuffer(fElementBuffer, CL_TRUE,
-                                         0, fNElements * sizeof(OpenCLDouble_t),
-                                         (void *) buffer);
-   } catch (cl::Error error) {
-       fDevice.HandleError(error.err());
-   }
+    std::cout << "nelements: " << fNElements << std::endl;
+   TOpenCLHostBuffer buffer(fNElements);
+   fElementBuffer.CopyTo(buffer);
 
    TMatrixT<OpenCLDouble_t> A(fNRows, fNCols);
    size_t bufferIndex = 0;
@@ -105,17 +79,17 @@ TOpenCLMatrix::operator TMatrixT<OpenCLDouble_t>() const
       }
    }
 
-   delete[] buffer;
    return A;
 }
 
+//____________________________________________________________________________
 TOpenCLMatrix & TOpenCLMatrix::operator=(const TMatrixT<OpenCLDouble_t> &A)
 {
    fNRows = A.GetNrows();
    fNCols = A.GetNcols();
    fNElements = fNRows * fNCols;
 
-   OpenCLDouble_t *buffer = new OpenCLDouble_t[fNRows * fNCols];
+   TOpenCLHostBuffer buffer(fNElements);
 
    size_t bufferIndex = 0;
    for (size_t j = 0; j < fNCols; j++) {
@@ -125,20 +99,15 @@ TOpenCLMatrix & TOpenCLMatrix::operator=(const TMatrixT<OpenCLDouble_t> &A)
       }
    }
 
-   try {
-      fElementBuffer = cl::Buffer(fDevice.GetContext(),
-                                  CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
-                                  fNElements * sizeof(OpenCLDouble_t), buffer);
-   } catch (cl::Error error) {
-      std::cout << "Error allocating TOpenCLMatrix: = " << error.what()
-                << std::endl << std::endl;
-      fDevice.HandleError(error.err());
-   }
+   fElementBuffer = TOpenCLDeviceBuffer(fNElements);
+   fElementBuffer.CopyFrom(buffer);
 
-   delete[] buffer;
-   InitializeRandomStreams();
+   if (fNElements > 0) {
+      InitializeRandomStreams();
+   }
 }
 
+//____________________________________________________________________________
 inline void TOpenCLMatrix::InitializeRandomStreams()
 {
    clrngLfsr113Stream * streamBuffer = nullptr;
@@ -153,11 +122,11 @@ inline void TOpenCLMatrix::InitializeRandomStreams()
 
       // Transfer to device.
       try {
-      fRandomStreams = cl::Buffer(fDevice.GetContext(),
-                                  CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
-                                  streamBufferSize, streamBuffer);
+         fRandomStreams = cl::Buffer(fElementBuffer.GetDevice().GetContext(),
+                                     CL_MEM_READ_WRITE | CL_MEM_COPY_HOST_PTR,
+                                     streamBufferSize, streamBuffer);
       } catch (cl::Error error) {
-         fDevice.HandleError(error.err());
+         fElementBuffer.GetDevice().HandleError(error.err());
       }
 
       fNStreams = fNElements;

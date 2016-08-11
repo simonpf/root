@@ -20,6 +20,7 @@ using namespace TMVA::DNN;
 
 int main()
 {
+
    testDataLoader<TOpenCL>();
    return 0;
 }

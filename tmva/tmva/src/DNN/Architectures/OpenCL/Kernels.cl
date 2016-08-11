@@ -206,10 +206,30 @@ __kernel void CrossEntropyGradients(__global double * C,
 }
 
 //
+// Copy
+//
+//____________________________________________________________________________
+__kernel void Copy(__global double * B,
+                   __global const double * A,
+                   int m)
+{
+   int globalIndexX = get_global_id(0);
+   int localIndexY  = get_local_id(1);
+   int localSizeY   = get_local_size(1);
+
+   int offset     = globalIndexX * m;
+
+   for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
+     B[i] = A[i];
+   }
+}
+
+//
 // Activation Functions
 //
 //____________________________________________________________________________
-__kernel void IdentityDerivative(__global double * A,
+__kernel void IdentityDerivative(__global double * B,
+                                 __global const double * A,
                                   int m)
 {
    int globalIndexX = get_global_id(0);
@@ -219,7 +239,7 @@ __kernel void IdentityDerivative(__global double * A,
    int offset     = globalIndexX * m;
 
    for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
-     A[i] = 1.0;
+     B[i] = 1.0;
    }
 }
 

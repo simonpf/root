@@ -157,7 +157,7 @@ public:
    TCudaMatrix();
    TCudaMatrix(size_t i, size_t j);
    TCudaMatrix(const TMatrixT<CudaDouble_t> &);
-   TCudaMatrix(TCudaDeviceBuffer buffer, size_t m, size_t n);
+   TCudaMatrix(size_t m, size_t n, TCudaDeviceBuffer buffer);
 
    TCudaMatrix(const TCudaMatrix  &) = default;
    TCudaMatrix(      TCudaMatrix &&) = default;

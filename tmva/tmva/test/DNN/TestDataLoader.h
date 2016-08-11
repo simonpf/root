@@ -13,7 +13,7 @@
 // Generic test for DataLoader implementations. //
 //////////////////////////////////////////////////
 
-#include "TMVA/DNN/DeviceDataLoader.h"
+#include "TMVA/DNN/DataLoader.h"
 #include "TMatrix.h"
 #include "Utility.h"
 #include "tbb/tbb.h"
@@ -29,22 +29,32 @@ auto testDataLoader()
 {
 
    using Real_t       = typename Architecture_t::Scalar_t;
-   using Device_t     = typename Architecture_t::Device_t;
-   using DataLoader_t = TDeviceDataLoader<Architecture_t, MatrixInput_t>;
+   using DataLoader_t = TDataLoader<MatrixInput_t, Architecture_t>;
 
-   size_t nSamples  = 1000000;
-   size_t batchSize = 10000;
-   size_t nFeatures = 100;
+   size_t nSamples  = 10000;
+   size_t batchSize = 1000;
+   size_t nFeatures = 1000;
+   size_t nStreams  = 4;
 
    TMatrixT<Double_t> X(nSamples, nFeatures), Y(nSamples, nFeatures);
    randomMatrix(X);
    randomMatrix(Y);
+
    MatrixInput_t input(X, Y);
 
-   Device_t     device(4);
-   DataLoader_t loader(input, nSamples, batchSize, nFeatures, nFeatures, 4, 4, device);
+   DataLoader_t loader(input, nSamples, batchSize, nFeatures, nFeatures, nStreams);
 
    Real_t msq = 0.0;
+   for (size_t i = 0; i < nSamples / batchSize; i++) {
+      auto batch = loader.GetBatch();
+      Architecture_t::Tanh(batch.GetInput());
+      Architecture_t::Tanh(batch.GetInput());
+      Architecture_t::Tanh(batch.GetInput());
+      Architecture_t::Tanh(batch.GetInput());
+      Architecture_t::Tanh(batch.GetInput());
+      Architecture_t::Tanh(batch.GetInput());
+   }
+
    for (size_t i = 0; i < nSamples / batchSize; i++) {
       auto batch = loader.GetBatch();
       msq += Architecture_t::MeanSquaredError(batch.GetInput(), batch.GetOutput());
