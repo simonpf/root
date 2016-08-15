@@ -83,7 +83,8 @@ endif(CUDA_FOUND)
 #---Handle OpenCL dependent code. -----------------
 find_package(OpenCL)
 if (OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)
-  include_directories(${ROOT_INCLUDE_DIRS} ${clBLAS_DIR}/src ${clRNG_DIR}/src/include)
+  include_directories(${ROOT_INCLUDE_DIRS} ${OpenCL_INCLUDE_DIR}
+    ${clBLAS_DIR}/src ${clRNG_DIR}/src/include)
   add_library(dnn_opencl ${dnn_opencl_files})
   set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/src/DNN/Architectures/OpenCL/Kernels.cl)
   set(KERNEL_INCLUDE ${clRNG_DIR}src/include)

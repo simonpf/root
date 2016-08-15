@@ -92,7 +92,7 @@ endif (CUDA_FOUND)
 
 find_package(OpenCL)
 if (OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)
-  include_directories(${ROOT_INCLUDE_DIRS} ${OpenCL_INCLUDE_DIRS}
+  include_directories(${ROOT_INCLUDE_DIRS} ${OpenCL_INCLUDE_DIR}
     ${clBLAS_DIR}/src ${clRNG_DIR}/src/include)
   LINK_DIRECTORIES(${clBLAS_DIR}/library ${clRNG_DIR}/src/library)
 
