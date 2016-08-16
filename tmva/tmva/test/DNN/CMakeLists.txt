@@ -103,7 +103,7 @@ if (OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)
   # DNN - Matrix Arithmetic OpenCL
   LINK_DIRECTORIES(/home/simon/src/clBLAS/library)
   ROOT_EXECUTABLE(testMatrixArithmeticOpenCL TestMatrixArithmeticOpenCL.cxx
-                  LIBRARIES ${Libraries}  dnn_opencl ${OpenCL_LIBRARIES} clBLAS )
+                  LIBRARIES ${Libraries}  dnn_opencl ${OpenCL_LIBRARIES} clBLAS clRNG)
   ROOT_ADD_TEST(TMVA-DNN-MatrixArithmeticOpenCL COMMAND testMatrixArithmeticOpenCL)
 
   # DNN - Loss Functions OpenCL
@@ -122,7 +122,7 @@ if (OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)
 
   # DNN - Derivatives OpenCL
   ROOT_EXECUTABLE(testBackpropagationOpenCL TestBackpropagationOpenCL.cxx
-                  LIBRARIES ${Libraries}  dnn_opencl tbb ${OpenCL_LIBRARIES} clBLAS )
+                  LIBRARIES ${Libraries}  dnn_opencl tbb ${OpenCL_LIBRARIES} clBLAS clRNG)
   ROOT_ADD_TEST(TMVA-DNN-BackpropagationOpenCL COMMAND testBackPropagationOpenCL)
 
   # DNN - Dataloader OpenCL

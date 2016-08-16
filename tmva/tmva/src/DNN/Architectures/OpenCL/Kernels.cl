@@ -39,12 +39,15 @@ __kernel void Hadamard(__global double *B,
                        __global const double *A,
                        int m, int n)
 {
-    int x = get_global_id(0);
-    int y = get_global_id(1);
+   int globalIndexX = get_global_id(0);
+   int localIndexY  = get_local_id(1);
+   int localSizeY   = get_local_size(1);
 
-    if ((x < n) && (y < m)) {
-       B[x * m + y] *= A[x * m + y];
-    }
+   int offset     = globalIndexX * m;
+
+   for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
+      B[i] *= A[i];
+   }
 }
 
 //____________________________________________________________________________

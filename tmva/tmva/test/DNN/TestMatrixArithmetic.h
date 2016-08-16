@@ -34,9 +34,9 @@ auto testMultiplication(size_t ntests)
    for (size_t t = 0; t < ntests; t++) {
 
       size_t m, n, k;
-      m = rand() % 100 + 1;
-      n = rand() % 100 + 1;
-      k = rand() % 100 + 1;
+      m = rand() % 1000 + 1;
+      n = rand() % 1000 + 1;
+      k = rand() % 1000 + 1;
 
       TMatrixT<Scalar_t> ARef(m,k), A2Ref(m,k), ATRef(k,m) , BRef(k,n),
           BTRef(n,k), CRef(m,n);
