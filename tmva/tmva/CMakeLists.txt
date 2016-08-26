@@ -35,6 +35,31 @@ set(headers4 TNeuron.h TSynapse.h TActivationChooser.h TActivation.h TActivation
 	     TNeuronInputSqSum.h TNeuronInputAbs.h Types.h Ranking.h RuleFit.h RuleFitAPI.h IMethod.h MsgLogger.h
 	     VariableTransformBase.h VariableIdentityTransform.h VariableDecorrTransform.h VariablePCATransform.h 
 	     VariableGaussTransform.h VariableNormalizeTransform.h VariableRearrangeTransform.h VariableTransform.h ROCCalc.h ROCCurve.h)
+set(dnn_files src/DNN/Architectures/Reference.cxx
+  src/DNN/Architectures/Reference/DataLoader.cxx)
+set(dnn_cuda_files src/DNN/Architectures/Cuda/ActivationFunctions.cu
+                   src/DNN/Architectures/Cuda/Arithmetic.cu
+                   src/DNN/Architectures/Cuda/Buffers.cxx
+                   src/DNN/Architectures/Cuda/CudaMatrix.cu
+                   src/DNN/Architectures/Cuda/DataLoader.cu
+                   src/DNN/Architectures/Cuda/Dropout.cu
+                   src/DNN/Architectures/Cuda/Initialization.cu
+                   src/DNN/Architectures/Cuda/Kernels.cu
+                   src/DNN/Architectures/Cuda/LossFunctions.cu
+                   src/DNN/Architectures/Cuda/OutputFunctions.cu
+                   src/DNN/Architectures/Cuda/Propagation.cu
+                   src/DNN/Architectures/Cuda/Regularization.cu)
+set(dnn_opencl_files src/DNN/Architectures/OpenCL.cxx
+                     src/DNN/Architectures/OpenCL/Arithmetic.cxx
+                     src/DNN/Architectures/OpenCL/ActivationFunctions.cxx
+                     src/DNN/Architectures/OpenCL/Buffers.cxx
+                     src/DNN/Architectures/OpenCL/Initialization.cxx
+                     src/DNN/Architectures/OpenCL/LossFunctions.cxx
+                     src/DNN/Architectures/OpenCL/Propagation.cxx
+                     src/DNN/Architectures/OpenCL/Regularization.cxx
+                     src/DNN/Architectures/OpenCL/OpenCLMatrix.cxx
+                     src/DNN/Architectures/OpenCL/Dropout.cxx
+                     src/DNN/Architectures/OpenCL/OpenCLDevice.cxx)
 
 set(headers5 Event.h Results.h ResultsClassification.h ResultsRegression.h
     ResultsMulticlass.h VariableInfo.h ClassInfo.h DataLoader.h DataSet.h
@@ -77,10 +102,28 @@ ELSE (BLAS_FOUND AND imt)
   SET(DNN_CPU_FILES)
 ENDIF(BLAS_FOUND AND imt)
 
+#---Handle OpenCL dependent code. -----------------
+find_package(OpenCL)
+if (OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)
+  include_directories(${ROOT_INCLUDE_DIRS} ${OpenCL_INCLUDE_DIR}
+    ${clBLAS_DIR}/src ${clRNG_DIR}/src/include)
+  add_library(dnn_opencl ${dnn_opencl_files} ${OpenCL_LIBRARIES})
+  set(DNN_OPENCL_LIBRARIES dnn_opencl ${OpenCL_LIBRARIES})
+  set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/src/DNN/Architectures/OpenCL/Kernels.cl)
+  set(KERNEL_INCLUDE ${clRNG_DIR}src/include)
+  MESSAGE(STATUS "KERNEL INCLUDE: " ${KERNEL_INCLUDE})
+  target_compile_definitions(dnn_opencl PRIVATE -D__KERNEL_FILE__=${KERNEL_FILE})
+  target_compile_definitions(dnn_opencl PRIVATE -D__KERNEL_INCLUDE_DIRS__=${KERNEL_INCLUDE})
+  set(opencl_libraries dnn_opencl tbb ${OpenCL_LIBRARIES})
+else (OpenCL_FOUND AND clBLAS_FOUND AND clRNG_DIR)
+  set(DNN_OPENCL_LIBRARIES)
+endif(OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)
+
 ROOT_GENERATE_DICTIONARY(G__TMVA ${theaders1} ${theaders2} ${theaders3} ${theaders4} ${theaders5}  MODULE TMVA LINKDEF LinkDef.h OPTIONS "-writeEmptyRootPCM")
 
 ROOT_LINKER_LIBRARY(TMVA *.cxx G__TMVA.cxx ${DNN_FILES} ${DNN_CPU_FILES}
                     LIBRARIES Core ${DNN_CUDA_LIBRARIES} ${DNN_CPU_LIBRARIES}
+                                   ${DNN_OPENCL_LIBRARIES}
                     DEPENDENCIES RIO Hist Tree TreePlayer MLP Minuit XMLIO)
 
 install(DIRECTORY inc/TMVA/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/TMVA
