@@ -123,7 +123,7 @@ if (OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)
   # DNN - Derivatives OpenCL
   ROOT_EXECUTABLE(testBackpropagationOpenCL TestBackpropagationOpenCL.cxx
                   LIBRARIES ${Libraries} ${DNN_OPENCL_LIBRARIES})
-  ROOT_ADD_TEST(TMVA-DNN-BackpropagationOpenCL COMMAND testBackPropagationOpenCL)
+  ROOT_ADD_TEST(TMVA-DNN-BackpropagationOpenCL COMMAND testBackpropagationOpenCL)
 
   # DNN - Dataloader OpenCL
   ROOT_EXECUTABLE(testDataLoaderOpenCL TestDataLoaderOpenCL.cxx

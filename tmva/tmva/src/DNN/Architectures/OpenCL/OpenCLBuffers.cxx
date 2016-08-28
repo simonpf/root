@@ -105,9 +105,7 @@ TOpenCLDeviceBuffer<AFloat, AType>::TOpenCLDeviceBuffer(size_t size)
    }
 
    fDevice->HandleError(error);
-   fComputeQueue = cl::CommandQueue(fDevice->GetContext(),
-                                    fDevice->GetDevice(),
-                                    0, &error);
+   fComputeQueue = fDevice->GetQueue();
    fDevice->HandleError(error);
 }
 
@@ -126,9 +124,7 @@ TOpenCLDeviceBuffer<AFloat, AType>::TOpenCLDeviceBuffer(
    }
 
    fDevice->HandleError(error);
-   fComputeQueue = cl::CommandQueue(fDevice->GetContext(),
-                                    fDevice->GetDevice(),
-                                    0, &error);
+   fComputeQueue = fDevice->GetQueue();
    fDevice->HandleError(error);
 }
 
