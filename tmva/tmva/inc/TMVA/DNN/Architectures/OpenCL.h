@@ -21,10 +21,10 @@
 #include <utility>
 #include <memory>
 
-#include "OpenCL/Types.h"
-#include "OpenCL/OpenCLMatrix.h"
+#include "Rtypes.h"
 #include "OpenCL/OpenCLDevice.h"
-#include "OpenCL/Buffers.h"
+#include "OpenCL/OpenCLMatrix.h"
+#include "OpenCL/OpenCLBuffers.h"
 #include "CL/cl.h"
 
 namespace TMVA
@@ -39,6 +39,7 @@ namespace DNN
  * for this architecture as well as the remaining functions in the low-level
  * interface in the form of static members.
  */
+template<typename AFloat, EOpenCLDeviceType AType = EOpenCLDeviceType::kGpu>
 class TOpenCL
 {
 
@@ -46,18 +47,18 @@ private:
 
    /** Provides an OpenCL default device and context to be used if no unified
     *  device handling is available. Creates the device only if requested. */
-   static std::shared_ptr<TOpenCLDevice> fDefaultDevice;
+   static std::shared_ptr<TOpenCLDevice<AFloat, AType>> fDefaultDevice;
 
 public:
 
-   using Scalar_t = OpenCLDouble_t;
-   using Matrix_t = TOpenCLMatrix;
-   using DeviceBuffer_t = TOpenCLDeviceBuffer;
-   using HostBuffer_t   = TOpenCLHostBuffer;
+   using Scalar_t       = AFloat;
+   using Matrix_t       = TOpenCLMatrix<AFloat, AType>;
+   using DeviceBuffer_t = TOpenCLDeviceBuffer<AFloat, AType>;
+   using HostBuffer_t   = TOpenCLHostBuffer<AFloat, AType>;
 
    /** Return a reference to the default device or create it if it has not
     *  yet been created. */
-   static std::shared_ptr<TOpenCLDevice> GetDefaultDevice();
+   static std::shared_ptr<TOpenCLDevice<AFloat, AType>> GetDefaultDevice();
 
    //____________________________________________________________________________
    //
@@ -71,12 +72,12 @@ public:
    ///@{
    /** Matrix-multiply \p input with the transpose of \pweights and
     *  write the results into \p output. */
-   static void MultiplyTranspose(TOpenCLMatrix &output,
-                                 const TOpenCLMatrix &input,
-                                 const TOpenCLMatrix &weights);
+   static void MultiplyTranspose(TOpenCLMatrix<AFloat, AType> &output,
+                                 const TOpenCLMatrix<AFloat, AType> &input,
+                                 const TOpenCLMatrix<AFloat, AType> &weights);
    /** Add the vectors biases row-wise to the matrix output */
-   static void AddRowWise(TOpenCLMatrix &output,
-                          const TOpenCLMatrix &biases);
+   static void AddRowWise(TOpenCLMatrix<AFloat, AType> &output,
+                          const TOpenCLMatrix<AFloat, AType> &biases);
    ///@}
 
    /** @name Backward Propagation
@@ -92,22 +93,22 @@ public:
     *  in \p df and thus produces only a valid result, if it is applied the
     *  first time after the corresponding forward propagation has been per-
     *  formed. */
-   static void Backward(TOpenCLMatrix & activationGradientsBackward,
-                        TOpenCLMatrix & weightGradients,
-                        TOpenCLMatrix & biasGradients,
-                        TOpenCLMatrix & df,
-                        const TOpenCLMatrix & activationGradients,
-                        const TOpenCLMatrix & weights,
-                        const TOpenCLMatrix & activationBackward);
+   static void Backward(TOpenCLMatrix<AFloat, AType> & activationGradientsBackward,
+                        TOpenCLMatrix<AFloat, AType> & weightGradients,
+                        TOpenCLMatrix<AFloat, AType> & biasGradients,
+                        TOpenCLMatrix<AFloat, AType> & df,
+                        const TOpenCLMatrix<AFloat, AType> & activationGradients,
+                        const TOpenCLMatrix<AFloat, AType> & weights,
+                        const TOpenCLMatrix<AFloat, AType> & activationBackward);
    /** Adds a the elements in matrix B scaled by c to the elements in
     *  the matrix A. This is required for the weight update in the gradient
     *  descent step.*/
-   static void ScaleAdd(TOpenCLMatrix & A,
-                        const TOpenCLMatrix & B,
+   static void ScaleAdd(TOpenCLMatrix<AFloat, AType> & A,
+                        const TOpenCLMatrix<AFloat, AType> & B,
                         Scalar_t beta = 1.0);
 
-   static void Copy(TOpenCLMatrix & B,
-                    const TOpenCLMatrix & A);
+   static void Copy(TOpenCLMatrix<AFloat, AType> & B,
+                    const TOpenCLMatrix<AFloat, AType> & A);
    ///@}
 
    //____________________________________________________________________________
@@ -122,33 +123,33 @@ public:
     * and writes the results into the result matrix.
     */
    ///@{
-   static void Identity(TOpenCLMatrix & B);
-   static void IdentityDerivative(TOpenCLMatrix & B,
-                                  const TOpenCLMatrix & A);
+   static void Identity(TOpenCLMatrix<AFloat, AType> & B);
+   static void IdentityDerivative(TOpenCLMatrix<AFloat, AType> & B,
+                                  const TOpenCLMatrix<AFloat, AType> & A);
 
-   static void Relu(TOpenCLMatrix & B);
-   static void ReluDerivative(TOpenCLMatrix & B,
-                              const TOpenCLMatrix & A);
+   static void Relu(TOpenCLMatrix<AFloat, AType> & B);
+   static void ReluDerivative(TOpenCLMatrix<AFloat, AType> & B,
+                              const TOpenCLMatrix<AFloat, AType> & A);
 
-   static void Sigmoid(TOpenCLMatrix & B);
-   static void SigmoidDerivative(TOpenCLMatrix & B,
-                                 const TOpenCLMatrix & A);
+   static void Sigmoid(TOpenCLMatrix<AFloat, AType> & B);
+   static void SigmoidDerivative(TOpenCLMatrix<AFloat, AType> & B,
+                                 const TOpenCLMatrix<AFloat, AType> & A);
 
-   static void Tanh(TOpenCLMatrix & B);
-   static void TanhDerivative(TOpenCLMatrix & B,
-                              const TOpenCLMatrix & A);
+   static void Tanh(TOpenCLMatrix<AFloat, AType> & B);
+   static void TanhDerivative(TOpenCLMatrix<AFloat, AType> & B,
+                              const TOpenCLMatrix<AFloat, AType> & A);
 
-   static void SymmetricRelu(TOpenCLMatrix & B);
-   static void SymmetricReluDerivative(TOpenCLMatrix & B,
-                                       const TOpenCLMatrix & A);
+   static void SymmetricRelu(TOpenCLMatrix<AFloat, AType> & B);
+   static void SymmetricReluDerivative(TOpenCLMatrix<AFloat, AType> & B,
+                                       const TOpenCLMatrix<AFloat, AType> & A);
 
-   static void SoftSign(TOpenCLMatrix & B);
-   static void SoftSignDerivative(TOpenCLMatrix & B,
-                                  const TOpenCLMatrix & A);
+   static void SoftSign(TOpenCLMatrix<AFloat, AType> & B);
+   static void SoftSignDerivative(TOpenCLMatrix<AFloat, AType> & B,
+                                  const TOpenCLMatrix<AFloat, AType> & A);
 
-   static void Gauss(TOpenCLMatrix & B);
-   static void GaussDerivative(TOpenCLMatrix & B,
-                               const TOpenCLMatrix & A);
+   static void Gauss(TOpenCLMatrix<AFloat, AType> & B);
+   static void GaussDerivative(TOpenCLMatrix<AFloat, AType> & B,
+                               const TOpenCLMatrix<AFloat, AType> & A);
    ///@}
 
    //____________________________________________________________________________
@@ -165,20 +166,19 @@ public:
     */
    ///@{
 
-   static OpenCLDouble_t MeanSquaredError(const TOpenCLMatrix &Y,
-                                        const TOpenCLMatrix & output);
-   static void MeanSquaredErrorGradients(TOpenCLMatrix & dY,
-                                         const TOpenCLMatrix & Y,
-                                         const TOpenCLMatrix & output);
+   static AFloat MeanSquaredError(const TOpenCLMatrix<AFloat, AType> & Y,
+                                  const TOpenCLMatrix<AFloat, AType> & output);
+   static void MeanSquaredErrorGradients(      TOpenCLMatrix<AFloat, AType> & dY,
+                                         const TOpenCLMatrix<AFloat, AType> & Y,
+                                         const TOpenCLMatrix<AFloat, AType> & output);
 
     /** Sigmoid transformation is implicitly applied, thus \p output should
      *  hold the linear activations of the last layer in the net. */
-   static OpenCLDouble_t CrossEntropy(const TOpenCLMatrix &Y,
-                              const TOpenCLMatrix &output);
-
-   static void CrossEntropyGradients(TOpenCLMatrix & dY,
-                                     const TOpenCLMatrix & Y,
-                                     const TOpenCLMatrix & output);
+   static AFloat CrossEntropy(const TOpenCLMatrix<AFloat, AType> & Y,
+                              const TOpenCLMatrix<AFloat, AType> & output);
+   static void CrossEntropyGradients(      TOpenCLMatrix<AFloat, AType> & dY,
+                                     const TOpenCLMatrix<AFloat, AType> & Y,
+                                     const TOpenCLMatrix<AFloat, AType> & output);
    ///@}
 
    //____________________________________________________________________________
@@ -194,8 +194,8 @@ public:
     * classification.
     */
    ///@{
-   static void Sigmoid(TOpenCLMatrix &YHat,
-                        const TOpenCLMatrix & );
+   static void Sigmoid(TOpenCLMatrix<AFloat, AType> &YHat,
+                       const TOpenCLMatrix<AFloat, AType> & );
    ///@}
 
    //____________________________________________________________________________
@@ -212,15 +212,15 @@ public:
     */
    ///@{
 
-   static OpenCLDouble_t L1Regularization(const TOpenCLMatrix & W);
-   static void AddL1RegularizationGradients(TOpenCLMatrix & A,
-                                            const TOpenCLMatrix & W,
-                                            OpenCLDouble_t weightDecay);
+   static AFloat L1Regularization(const TOpenCLMatrix<AFloat, AType> & W);
+   static void AddL1RegularizationGradients(TOpenCLMatrix<AFloat, AType> & A,
+                                            const TOpenCLMatrix<AFloat, AType> & W,
+                                            AFloat weightDecay);
 
-   static OpenCLDouble_t L2Regularization(const TOpenCLMatrix & W);
-   static void AddL2RegularizationGradients(TOpenCLMatrix & A,
-                                            const TOpenCLMatrix & W,
-                                            OpenCLDouble_t weightDecay);
+   static AFloat L2Regularization(const TOpenCLMatrix<AFloat, AType> & W);
+   static void AddL2RegularizationGradients(TOpenCLMatrix<AFloat, AType> & A,
+                                            const TOpenCLMatrix<AFloat, AType> & W,
+                                            AFloat weightDecay);
    ///@}
 
    //____________________________________________________________________________
@@ -235,10 +235,10 @@ public:
     */
    ///@{
 
-   static void InitializeGauss(TOpenCLMatrix & A);
-   static void InitializeUniform(TOpenCLMatrix & A);
-   static void InitializeIdentity(TOpenCLMatrix & A);
-   static void InitializeZero(TOpenCLMatrix & A);
+   static void InitializeGauss(TOpenCLMatrix<AFloat, AType> & A);
+   static void InitializeUniform(TOpenCLMatrix<AFloat, AType> & A);
+   static void InitializeIdentity(TOpenCLMatrix<AFloat, AType> & A);
+   static void InitializeZero(TOpenCLMatrix<AFloat, AType> & A);
 
    ///@}
 
@@ -253,7 +253,7 @@ public:
 
    /** Apply dropout with activation probability \p p to the given
     *  matrix \p A and scale the result by reciprocal of \p p. */
-   static void Dropout(TOpenCLMatrix & A, OpenCLDouble_t p);
+   static void Dropout(TOpenCLMatrix<AFloat, AType> & A, AFloat p);
 
    ///@}
 
@@ -272,28 +272,29 @@ public:
    /** Standard multiplication of two matrices \p A and \p B with the result being
     *  written into C.
     */
-   static void Multiply(TOpenCLMatrix &C,
-                        const TOpenCLMatrix &A,
-                        const TOpenCLMatrix &B);
+   static void Multiply(TOpenCLMatrix<AFloat, AType> &C,
+                        const TOpenCLMatrix<AFloat, AType> &A,
+                        const TOpenCLMatrix<AFloat, AType> &B);
    /** Matrix multiplication of two matrices \p A and \p B^T (transposed) with the
     *  result being written into C.
     */
-   static void TransposeMultiply(TOpenCLMatrix &output,
-                                 const TOpenCLMatrix &input,
-                                 const TOpenCLMatrix &Weights);
+   static void TransposeMultiply(TOpenCLMatrix<AFloat, AType> &output,
+                                 const TOpenCLMatrix<AFloat, AType> &input,
+                                 const TOpenCLMatrix<AFloat, AType> &Weights);
    /** In-place Hadamard (element-wise) product of matrices \p A and \p B
     *  with the result being written into \p A.
     */
-   static void Hadamard(TOpenCLMatrix &A,
-                        const TOpenCLMatrix &B);
+   static void Hadamard(TOpenCLMatrix<AFloat, AType> &A,
+                        const TOpenCLMatrix<AFloat, AType> &B);
 
    /** Sum columns of (m x n) matrixx \p A and write the results into the first
     * m elements in \p A.
     */
-   static void SumColumns(TOpenCLMatrix &B, const TOpenCLMatrix &A);
+   static void SumColumns(TOpenCLMatrix<AFloat, AType> &B,
+                          const TOpenCLMatrix<AFloat, AType> &A);
 
    /** Compute the sum of all elements in \p A */
-   static OpenCLDouble_t Sum(const TOpenCLMatrix &A);
+   static AFloat Sum(const TOpenCLMatrix<AFloat, AType> &A);
 };
 
 } // namespace DNN

@@ -23,25 +23,28 @@ using namespace TMVA::DNN;
 
 int main()
 {
-    std::cout << "Testing Backpropagation:" << std::endl;
+   using Scalar_t = Real_t;
+   using OpenCL_t = TOpenCL<Scalar_t, EOpenCLDeviceType::kGpu>;
 
-    double error;
+   std::cout << "Testing Backpropagation:" << std::endl;
 
-    error = testBackpropagationWeightsLinear<TOpenCL>(1.0);
-    if (error > 1e-7)
-        return 1;
+   double error;
 
-    error = testBackpropagationL1Regularization<TOpenCL>(1e-2);
-    if (error > 1e-7)
-        return 1;
+   error = testBackpropagationWeightsLinear<OpenCL_t>(1.0);
+   if (error > 1)
+       return 1;
 
-    error = testBackpropagationL2Regularization<TOpenCL>(1.0);
-    if (error > 1e-7)
-        return 1;
+   error = testBackpropagationL1Regularization<OpenCL_t>(1e-2);
+   if (error > 1)
+       return 1;
 
-    error = testBackpropagationBiasesLinear<TOpenCL>(1.0);
-    if (error > 1e-7)
-        return 1;
+   error = testBackpropagationL2Regularization<OpenCL_t>(1.0);
+   if (error > 1)
+       return 1;
 
-    return 0;
+   error = testBackpropagationBiasesLinear<OpenCL_t>(1.0);
+   if (error > 1)
+       return 1;
+
+   return 0;
 }

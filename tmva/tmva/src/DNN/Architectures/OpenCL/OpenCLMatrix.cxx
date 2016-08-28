@@ -18,11 +18,14 @@
 namespace TMVA {
 namespace DNN  {
 
-cl::Buffer TOpenCLMatrix::fRandomStreams{};
-size_t     TOpenCLMatrix::fNStreams = 0;
+template<typename AFloat, EOpenCLDeviceType AType>
+cl::Buffer TOpenCLMatrix<AFloat, AType>::fRandomStreams{};
+template<typename AFloat, EOpenCLDeviceType AType>
+size_t     TOpenCLMatrix<AFloat, AType>::fNStreams = 0;
 
 //____________________________________________________________________________
-TOpenCLMatrix::TOpenCLMatrix(size_t nRows,
+template<typename AFloat, EOpenCLDeviceType AType>
+TOpenCLMatrix<AFloat, AType>::TOpenCLMatrix(size_t nRows,
                              size_t nCols)
     : fNRows(nRows), fNCols(nCols), fNElements(nRows * nCols),
       fElementBuffer(nRows * nCols)
@@ -33,16 +36,17 @@ TOpenCLMatrix::TOpenCLMatrix(size_t nRows,
 }
 
 //____________________________________________________________________________
-TOpenCLMatrix::TOpenCLMatrix(const TMatrixT<OpenCLDouble_t> & A)
+template<typename AFloat, EOpenCLDeviceType AType>
+TOpenCLMatrix<AFloat, AType>::TOpenCLMatrix(const TMatrixT<Double_t> & A)
     : fNRows(A.GetNrows()), fNCols(A.GetNcols()), fNElements(A.GetNoElements()),
       fElementBuffer(A.GetNoElements())
 {
    if (fNElements > 0) {
-      TOpenCLHostBuffer buffer(fNElements);
+      TOpenCLHostBuffer<AFloat, AType> buffer(fNElements);
       size_t bufferIndex = 0;
       for (size_t j = 0; j < fNCols; j++) {
          for (size_t i = 0; i < fNRows; i++) {
-            buffer[bufferIndex] = A(i,j);
+            buffer[bufferIndex] = static_cast<AFloat>(A(i,j));
             bufferIndex++;
          }
       }
@@ -54,9 +58,11 @@ TOpenCLMatrix::TOpenCLMatrix(const TMatrixT<OpenCLDouble_t> & A)
 }
 
 //____________________________________________________________________________
-TOpenCLMatrix::TOpenCLMatrix(size_t nRows,
-                             size_t nCols,
-                             const TOpenCLDeviceBuffer & buffer)
+template<typename AFloat, EOpenCLDeviceType AType>
+TOpenCLMatrix<AFloat, AType>::TOpenCLMatrix(
+    const TOpenCLDeviceBuffer<AFloat, AType> & buffer,
+    size_t nRows,
+    size_t nCols)
     : fNRows(nRows), fNCols(nCols), fNElements(nRows * nCols),
       fElementBuffer(buffer)
 {
@@ -64,32 +70,33 @@ TOpenCLMatrix::TOpenCLMatrix(size_t nRows,
 }
 
 //____________________________________________________________________________
-TOpenCLMatrix::operator TMatrixT<OpenCLDouble_t>() const
+template<typename AFloat, EOpenCLDeviceType AType>
+TOpenCLMatrix<AFloat, AType>::operator TMatrixT<Double_t>() const
 {
-    std::cout << "nelements: " << fNElements << std::endl;
-   TOpenCLHostBuffer buffer(fNElements);
+   TOpenCLHostBuffer<AFloat, AType> buffer(fNElements);
    fElementBuffer.CopyTo(buffer);
 
-   TMatrixT<OpenCLDouble_t> A(fNRows, fNCols);
+   TMatrixT<Double_t> A(fNRows, fNCols);
    size_t bufferIndex = 0;
    for (size_t j = 0; j < fNCols; j++) {
       for (size_t i = 0; i < fNRows; i++) {
-         A(i,j) = buffer[bufferIndex];
+         A(i,j) = static_cast<Double_t>(buffer[bufferIndex]);
          bufferIndex++;
       }
    }
-
    return A;
 }
 
 //____________________________________________________________________________
-TOpenCLMatrix & TOpenCLMatrix::operator=(const TMatrixT<OpenCLDouble_t> &A)
+template<typename AFloat, EOpenCLDeviceType AType>
+auto TOpenCLMatrix<AFloat, AType>::operator=(const TMatrixT<Double_t> &A)
+    -> TOpenCLMatrix &
 {
    fNRows = A.GetNrows();
    fNCols = A.GetNcols();
    fNElements = fNRows * fNCols;
 
-   TOpenCLHostBuffer buffer(fNElements);
+   TOpenCLHostBuffer<AFloat, AType> buffer(fNElements);
 
    size_t bufferIndex = 0;
    for (size_t j = 0; j < fNCols; j++) {
@@ -99,7 +106,7 @@ TOpenCLMatrix & TOpenCLMatrix::operator=(const TMatrixT<OpenCLDouble_t> &A)
       }
    }
 
-   fElementBuffer = TOpenCLDeviceBuffer(fNElements);
+   fElementBuffer = TOpenCLDeviceBuffer<AFloat, AType>(fNElements);
    fElementBuffer.CopyFrom(buffer);
 
    if (fNElements > 0) {
@@ -108,7 +115,8 @@ TOpenCLMatrix & TOpenCLMatrix::operator=(const TMatrixT<OpenCLDouble_t> &A)
 }
 
 //____________________________________________________________________________
-inline void TOpenCLMatrix::InitializeRandomStreams()
+template<typename AFloat, EOpenCLDeviceType AType>
+inline void TOpenCLMatrix<AFloat, AType>::InitializeRandomStreams()
 {
    clrngLfsr113Stream * streamBuffer = nullptr;
    size_t streamBufferSize;
@@ -134,6 +142,9 @@ inline void TOpenCLMatrix::InitializeRandomStreams()
       delete[] streamBuffer;
    }
 }
+
+template class TOpenCLMatrix<Real_t,   EOpenCLDeviceType::kGpu>;
+template class TOpenCLMatrix<Double_t, EOpenCLDeviceType::kGpu>;
 
 } // namespace DNN
 } // namespace TMVA

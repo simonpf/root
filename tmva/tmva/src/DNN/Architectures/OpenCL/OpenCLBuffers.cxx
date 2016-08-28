@@ -14,8 +14,9 @@
 // deep neural networks.                                           //
 /////////////////////////////////////////////////////////////////////
 
+#include "TMVA/DNN/DataLoader.h"
 #include "TMVA/DNN/Architectures/OpenCL.h"
-#include "TMVA/DNN/Architectures/OpenCL/Buffers.h"
+#include "TMVA/DNN/Architectures/OpenCL/OpenCLBuffers.h"
 #include "TMVA/DNN/DataLoader.h"
 
 namespace TMVA {
@@ -24,43 +25,51 @@ namespace DNN  {
 //
 // TOpenCLHostBuffer
 //______________________________________________________________________________
-void TOpenCLHostBuffer::TDestructor::operator()(OpenCLDouble_t **hostPointer)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCLHostBuffer<AFloat, AType>::TDestructor::operator()(AFloat **hostPointer)
 {
    free(*hostPointer);
    delete[] hostPointer;
 }
 
 //______________________________________________________________________________
-TOpenCLHostBuffer::TOpenCLHostBuffer(size_t size)
-    : fDevice(TOpenCL::GetDefaultDevice()), fOffset(0)
+template<typename AFloat, EOpenCLDeviceType AType>
+TOpenCLHostBuffer<AFloat, AType>::TOpenCLHostBuffer(size_t size)
+    : fDevice(TOpenCL<AFloat, AType>::GetDefaultDevice()), fOffset(0)
 {
     fComputeQueue = cl::CommandQueue(fDevice->GetContext(), fDevice->GetDevice());
     fBuffer = cl::Buffer(fDevice->GetContext(),
                          CL_MEM_READ_WRITE + CL_MEM_ALLOC_HOST_PTR,
-                         size * sizeof(OpenCLDouble_t));
-    fBufferPointer = (OpenCLDouble_t *) fComputeQueue.enqueueMapBuffer(
+                         size * sizeof(AFloat));
+    fBufferPointer = (AFloat *) fComputeQueue.enqueueMapBuffer(
         fBuffer, CL_TRUE,
         CL_MAP_WRITE + CL_MAP_READ,
-        0, size * sizeof(OpenCLDouble_t));
+        0, size * sizeof(AFloat));
 }
 
 //______________________________________________________________________________
-TOpenCLHostBuffer::TOpenCLHostBuffer(size_t size,
-                                     std::shared_ptr<TOpenCLDevice> device)
+template<typename AFloat, EOpenCLDeviceType AType>
+TOpenCLHostBuffer<AFloat, AType>::TOpenCLHostBuffer(
+    size_t size,
+    std::shared_ptr<TOpenCLDevice<AFloat, AType>> device)
     : fDevice(device), fOffset(0)
 {
     fComputeQueue = cl::CommandQueue(fDevice->GetContext(), fDevice->GetDevice());
     fBuffer = cl::Buffer(fDevice->GetContext(),
                          CL_MEM_READ_WRITE + CL_MEM_ALLOC_HOST_PTR,
-                         size * sizeof(OpenCLDouble_t));
-    fBufferPointer = (OpenCLDouble_t *) fComputeQueue.enqueueMapBuffer(
+                         size * sizeof(AFloat));
+    fBufferPointer = (AFloat *) fComputeQueue.enqueueMapBuffer(
         fBuffer, CL_TRUE,
         CL_MAP_WRITE + CL_MAP_READ,
-        0, size * sizeof(OpenCLDouble_t));
+        0, size * sizeof(AFloat));
 }
 
 //______________________________________________________________________________
-TOpenCLHostBuffer TOpenCLHostBuffer::GetSubBuffer(size_t offset, size_t size)
+template<typename AFloat, EOpenCLDeviceType AType>
+auto TOpenCLHostBuffer<AFloat, AType>::GetSubBuffer(
+    size_t offset,
+    size_t size)
+    -> TOpenCLHostBuffer
 {
    TOpenCLHostBuffer buffer = *this;
    buffer.fOffset          += offset;
@@ -68,13 +77,15 @@ TOpenCLHostBuffer TOpenCLHostBuffer::GetSubBuffer(size_t offset, size_t size)
 }
 
 //______________________________________________________________________________
-TOpenCLHostBuffer::operator OpenCLDouble_t * () const
+template<typename AFloat, EOpenCLDeviceType AType>
+TOpenCLHostBuffer<AFloat, AType>::operator AFloat * () const
 {
    return fBufferPointer + fOffset;
 }
 
 //______________________________________________________________________________
-TOpenCLHostBuffer::operator cl::Buffer () const
+template<typename AFloat, EOpenCLDeviceType AType>
+TOpenCLHostBuffer<AFloat, AType>::operator cl::Buffer () const
 {
    return fBuffer;
 }
@@ -82,14 +93,15 @@ TOpenCLHostBuffer::operator cl::Buffer () const
 //
 // TOpenCLDeviceBuffer
 //______________________________________________________________________________
-TOpenCLDeviceBuffer::TOpenCLDeviceBuffer(size_t size)
-    : fSize(size), fOffset(0), fDevice(TOpenCL::GetDefaultDevice())
+template<typename AFloat, EOpenCLDeviceType AType>
+TOpenCLDeviceBuffer<AFloat, AType>::TOpenCLDeviceBuffer(size_t size)
+    : fSize(size), fOffset(0), fDevice(TOpenCL<AFloat, AType>::GetDefaultDevice())
 {
    cl_int error;
 
    if (size > 0) {
    fBuffer = cl::Buffer(fDevice->GetContext(), CL_MEM_READ_WRITE,
-                        size * sizeof(OpenCLDouble_t), nullptr, &error);
+                        size * sizeof(AFloat), nullptr, &error);
    }
 
    fDevice->HandleError(error);
@@ -100,15 +112,17 @@ TOpenCLDeviceBuffer::TOpenCLDeviceBuffer(size_t size)
 }
 
 //______________________________________________________________________________
-TOpenCLDeviceBuffer::TOpenCLDeviceBuffer(size_t size,
-                                         std::shared_ptr<TOpenCLDevice> device)
+template<typename AFloat, EOpenCLDeviceType AType>
+TOpenCLDeviceBuffer<AFloat, AType>::TOpenCLDeviceBuffer(
+    size_t size,
+    std::shared_ptr<TOpenCLDevice<AFloat, AType>> device)
     : fSize(size), fOffset(0), fDevice(device)
 {
    cl_int error;
 
    if (size > 0) {
    fBuffer = cl::Buffer(fDevice->GetContext(), CL_MEM_READ_WRITE,
-                        size * sizeof(OpenCLDouble_t), nullptr, &error);
+                        size * sizeof(AFloat), nullptr, &error);
    }
 
    fDevice->HandleError(error);
@@ -119,23 +133,28 @@ TOpenCLDeviceBuffer::TOpenCLDeviceBuffer(size_t size,
 }
 
 //______________________________________________________________________________
-TOpenCLDeviceBuffer::operator cl::Buffer() const
+template<typename AFloat, EOpenCLDeviceType AType>
+TOpenCLDeviceBuffer<AFloat, AType>::operator cl::Buffer() const
 {
    return fBuffer;
 }
 
 //______________________________________________________________________________
-TOpenCLDeviceBuffer TOpenCLDeviceBuffer::GetSubBuffer(size_t offset, size_t size)
+template<typename AFloat, EOpenCLDeviceType AType>
+auto TOpenCLDeviceBuffer<AFloat, AType>::GetSubBuffer(
+    size_t offset,
+    size_t size)
+    -> TOpenCLDeviceBuffer
 {
-    TOpenCLDeviceBuffer buffer;
+   TOpenCLDeviceBuffer buffer;
    buffer.fSize         = size;
    buffer.fOffset       = fOffset;
    buffer.fDevice       = fDevice;
    buffer.fComputeQueue = fComputeQueue;
 
    _cl_buffer_region region;
-   region.origin = offset * sizeof(OpenCLDouble_t);
-   region.size   = size   * sizeof(OpenCLDouble_t);
+   region.origin = offset * sizeof(AFloat);
+   region.size   = size   * sizeof(AFloat);
 
    buffer.fBuffer = fBuffer.createSubBuffer(CL_MEM_READ_WRITE,
                                             CL_BUFFER_CREATE_TYPE_REGION,
@@ -144,15 +163,18 @@ TOpenCLDeviceBuffer TOpenCLDeviceBuffer::GetSubBuffer(size_t offset, size_t size
 }
 
 //______________________________________________________________________________
-void TOpenCLDeviceBuffer::CopyFrom(const TOpenCLHostBuffer &buffer) const
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCLDeviceBuffer<AFloat, AType>::CopyFrom(
+    const TOpenCLHostBuffer<AFloat, AType> &buffer
+    ) const
 {
    try {
        fComputeQueue = buffer.GetComputeQueue();
       void * temp = (void *) buffer.GetDataPointer();
 //       fComputeQueue.enqueueCopyBuffer(buffer, fBuffer, 0, 0,
-//                                       fSize * sizeof(OpenCLDouble_t));
+//                                       fSize * sizeof(AFloat));
       fComputeQueue.enqueueWriteBuffer(fBuffer, CL_FALSE, 0,
-                                       fSize * sizeof(OpenCLDouble_t),
+                                       fSize * sizeof(AFloat),
                                        buffer.GetDataPointer());
    fComputeQueue.flush();
    } catch(cl::Error error) {
@@ -161,12 +183,15 @@ void TOpenCLDeviceBuffer::CopyFrom(const TOpenCLHostBuffer &buffer) const
 }
 
 //______________________________________________________________________________
-void TOpenCLDeviceBuffer::CopyTo(const TOpenCLHostBuffer &buffer) const
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCLDeviceBuffer<AFloat, AType>::CopyTo(
+    const TOpenCLHostBuffer<AFloat, AType> &buffer
+    ) const
 {
    try {
       void * temp = (void *) buffer.GetDataPointer();
       fComputeQueue.enqueueReadBuffer(fBuffer, CL_TRUE, 0,
-                                      fSize * sizeof(OpenCLDouble_t),
+                                      fSize * sizeof(AFloat),
                                       buffer.GetDataPointer());
    } catch(cl::Error error) {
       fDevice->HandleError(error.err());
@@ -176,8 +201,8 @@ void TOpenCLDeviceBuffer::CopyTo(const TOpenCLHostBuffer &buffer) const
 
 //______________________________________________________________________________
 template<>
-void TDataLoader<MatrixInput_t, TOpenCL>::CopyInput(
-    TOpenCLHostBuffer & buffer,
+void TDataLoader<MatrixInput_t, TOpenCL<Double_t, EOpenCLDeviceType::kGpu>>::CopyInput(
+    TOpenCLHostBuffer<Double_t, EOpenCLDeviceType::kGpu> & buffer,
     IndexIterator_t sampleIterator,
     size_t batchSize)
 {
@@ -188,7 +213,7 @@ void TDataLoader<MatrixInput_t, TOpenCL>::CopyInput(
       size_t sampleIndex = *sampleIterator;
       for (size_t j = 0; j < n; j++) {
          size_t bufferIndex = j * batchSize + i;
-         buffer[bufferIndex] = inputMatrix(sampleIndex, j);
+         buffer[bufferIndex] = static_cast<Double_t>(inputMatrix(sampleIndex, j));
       }
       sampleIterator++;
    }
@@ -196,8 +221,8 @@ void TDataLoader<MatrixInput_t, TOpenCL>::CopyInput(
 
 //______________________________________________________________________________
 template<>
-void TDataLoader<MatrixInput_t, TOpenCL>::CopyOutput(
-    TOpenCLHostBuffer & buffer,
+void TDataLoader<MatrixInput_t, TOpenCL<Double_t, EOpenCLDeviceType::kGpu>>::CopyOutput(
+    TOpenCLHostBuffer<Double_t, EOpenCLDeviceType::kGpu> & buffer,
     IndexIterator_t sampleIterator,
     size_t batchSize)
 {
@@ -208,13 +233,60 @@ void TDataLoader<MatrixInput_t, TOpenCL>::CopyOutput(
       size_t sampleIndex = *sampleIterator;
       for (size_t j = 0; j < n; j++) {
          size_t bufferIndex = j * batchSize + i;
-         buffer[bufferIndex] = outputMatrix(sampleIndex, j);
+         buffer[bufferIndex] = static_cast<Double_t>(outputMatrix(sampleIndex, j));
       }
       sampleIterator++;
    }
 }
 
-template class TDataLoader<MatrixInput_t, TOpenCL>;
+//______________________________________________________________________________
+template<>
+void TDataLoader<MatrixInput_t, TOpenCL<Real_t, EOpenCLDeviceType::kGpu>>::CopyInput(
+    TOpenCLHostBuffer<Real_t, EOpenCLDeviceType::kGpu> & buffer,
+    IndexIterator_t sampleIterator,
+    size_t batchSize)
+{
+   const TMatrixT<Real_t> &inputMatrix  = std::get<0>(fData);
+   size_t n = inputMatrix.GetNcols();
+
+   for (size_t i = 0; i < batchSize; i++) {
+      size_t sampleIndex = *sampleIterator;
+      for (size_t j = 0; j < n; j++) {
+         size_t bufferIndex = j * batchSize + i;
+         buffer[bufferIndex] = static_cast<Real_t>(inputMatrix(sampleIndex, j));
+      }
+      sampleIterator++;
+   }
+}
+
+//______________________________________________________________________________
+template<>
+void TDataLoader<MatrixInput_t, TOpenCL<Real_t, EOpenCLDeviceType::kGpu>>::CopyOutput(
+    TOpenCLHostBuffer<Real_t, EOpenCLDeviceType::kGpu> & buffer,
+    IndexIterator_t sampleIterator,
+    size_t batchSize)
+{
+   const TMatrixT<Real_t> &outputMatrix  = std::get<1>(fData);
+   size_t n = outputMatrix.GetNcols();
+
+   for (size_t i = 0; i < batchSize; i++) {
+      size_t sampleIndex = *sampleIterator;
+      for (size_t j = 0; j < n; j++) {
+         size_t bufferIndex = j * batchSize + i;
+         buffer[bufferIndex] = static_cast<Real_t>(outputMatrix(sampleIndex, j));
+      }
+      sampleIterator++;
+   }
+}
+
+template class TDataLoader<MatrixInput_t, TOpenCL<Real_t,  EOpenCLDeviceType::kGpu>>;
+template class TDataLoader<MatrixInput_t, TOpenCL<Double_t, EOpenCLDeviceType::kGpu>>;
+
+template class TOpenCLDeviceBuffer<Real_t,   EOpenCLDeviceType::kGpu>;
+template class TOpenCLDeviceBuffer<Double_t, EOpenCLDeviceType::kGpu>;
+
+template class TOpenCLHostBuffer<Real_t,   EOpenCLDeviceType::kGpu>;
+template class TOpenCLHostBuffer<Double_t, EOpenCLDeviceType::kGpu>;
 
 } // namespace TMVA
 } // namespace DNN

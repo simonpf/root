@@ -19,14 +19,17 @@ namespace TMVA {
 namespace DNN  {
 
 //____________________________________________________________________________
-void TOpenCL::Dropout(TOpenCLMatrix &A, OpenCLDouble_t dropoutProbability)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::Dropout(TOpenCLMatrix<AFloat, AType> &A,
+                                     AFloat dropoutProbability)
 {
-   const TOpenCLDevice &device = A.GetDevice();
+   const TOpenCLDevice<AFloat, AType> &device = A.GetDevice();
    int m     = (int) A.GetNrows();
    int n     = (int) A.GetNcols();
 
-   cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
-   cl::NDRange local(1, TOpenCLDevice::localSize);
+   cl::NDRange global(static_cast<size_t>(n),
+                      TOpenCLDevice<AFloat, AType>::localSize);
+   cl::NDRange local(1, TOpenCLDevice<AFloat, AType>::localSize);
 
    cl::CommandQueue queue = A.GetComputeQueue();
    device.EnqueueKernel(EOpenCLKernel::kDropout, queue,

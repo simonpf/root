@@ -35,31 +35,6 @@ set(headers4 TNeuron.h TSynapse.h TActivationChooser.h TActivation.h TActivation
 	     TNeuronInputSqSum.h TNeuronInputAbs.h Types.h Ranking.h RuleFit.h RuleFitAPI.h IMethod.h MsgLogger.h
 	     VariableTransformBase.h VariableIdentityTransform.h VariableDecorrTransform.h VariablePCATransform.h 
 	     VariableGaussTransform.h VariableNormalizeTransform.h VariableRearrangeTransform.h VariableTransform.h ROCCalc.h ROCCurve.h)
-set(dnn_files src/DNN/Architectures/Reference.cxx
-  src/DNN/Architectures/Reference/DataLoader.cxx)
-set(dnn_cuda_files src/DNN/Architectures/Cuda/ActivationFunctions.cu
-                   src/DNN/Architectures/Cuda/Arithmetic.cu
-                   src/DNN/Architectures/Cuda/Buffers.cxx
-                   src/DNN/Architectures/Cuda/CudaMatrix.cu
-                   src/DNN/Architectures/Cuda/DataLoader.cu
-                   src/DNN/Architectures/Cuda/Dropout.cu
-                   src/DNN/Architectures/Cuda/Initialization.cu
-                   src/DNN/Architectures/Cuda/Kernels.cu
-                   src/DNN/Architectures/Cuda/LossFunctions.cu
-                   src/DNN/Architectures/Cuda/OutputFunctions.cu
-                   src/DNN/Architectures/Cuda/Propagation.cu
-                   src/DNN/Architectures/Cuda/Regularization.cu)
-set(dnn_opencl_files src/DNN/Architectures/OpenCL.cxx
-                     src/DNN/Architectures/OpenCL/Arithmetic.cxx
-                     src/DNN/Architectures/OpenCL/ActivationFunctions.cxx
-                     src/DNN/Architectures/OpenCL/Buffers.cxx
-                     src/DNN/Architectures/OpenCL/Initialization.cxx
-                     src/DNN/Architectures/OpenCL/LossFunctions.cxx
-                     src/DNN/Architectures/OpenCL/Propagation.cxx
-                     src/DNN/Architectures/OpenCL/Regularization.cxx
-                     src/DNN/Architectures/OpenCL/OpenCLMatrix.cxx
-                     src/DNN/Architectures/OpenCL/Dropout.cxx
-                     src/DNN/Architectures/OpenCL/OpenCLDevice.cxx)
 
 set(headers5 Event.h Results.h ResultsClassification.h ResultsRegression.h
     ResultsMulticlass.h VariableInfo.h ClassInfo.h DataLoader.h DataSet.h
@@ -80,6 +55,10 @@ SET(DNN_CUDA_FILES src/DNN/Architectures/Cuda.cu
 SET(DNN_CPU_FILES  src/DNN/Architectures/Cpu.cxx
                    src/DNN/Architectures/Cpu/CpuBuffer.cxx
                    src/DNN/Architectures/Cpu/CpuMatrix.cxx)
+set(DNN_OPENCL_FILES src/DNN/Architectures/OpenCL.cxx
+                     src/DNN/Architectures/OpenCL/OpenCLBuffers.cxx
+                     src/DNN/Architectures/OpenCL/OpenCLMatrix.cxx
+                     src/DNN/Architectures/OpenCL/OpenCLDevice.cxx)
 
 #---Handle CUDA dependent code. -----------------
 FIND_PACKAGE(CUDA)
@@ -107,7 +86,7 @@ find_package(OpenCL)
 if (OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)
   include_directories(${ROOT_INCLUDE_DIRS} ${OpenCL_INCLUDE_DIR}
     ${clBLAS_DIR}/src ${clRNG_DIR}/src/include)
-  add_library(dnn_opencl ${dnn_opencl_files} ${OpenCL_LIBRARIES})
+  add_library(dnn_opencl ${DNN_OPENCL_FILES} ${OpenCL_LIBRARIES})
   set(DNN_OPENCL_LIBRARIES dnn_opencl ${OpenCL_LIBRARIES})
   set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/src/DNN/Architectures/OpenCL/Kernels.cl)
   set(KERNEL_INCLUDE ${clRNG_DIR}src/include)
@@ -140,8 +119,7 @@ if(NOT gnuinstall)
                  PATTERN "README"
                  PATTERN "data" EXCLUDE)
 endif()
-
-ROOT_ADD_TEST_SUBDIRECTORY(test)
+ROOT_ADD_TEST_SUBDIRECTORY(test/DNN)
 
 
 

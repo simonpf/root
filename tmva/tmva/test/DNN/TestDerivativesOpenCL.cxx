@@ -22,18 +22,21 @@ using namespace TMVA::DNN;
 
 int main()
 {
-   double error;
+   using Scalar_t = Double_t;
+   using OpenCL_t = TOpenCL<Scalar_t, EOpenCLDeviceType::kGpu>;
+
+   std::cout << "Testing derivatives:" << std::endl;
 
    //
    // Activation Functions
    //
 
    std::cout << "Activation Functions:" << std::endl;
-   error = testActivationFunctionDerivatives<TOpenCL>();
+   Double_t error = testActivationFunctionDerivatives<OpenCL_t>();
    std::cout << "Total    : ";
    std::cout << "Maximum Relative Error = " << print_error(error);
    std::cout << std::endl << std::endl;
-   if (error > 1e-5)
+   if (error > 1.0)
        return 1;
 
    //
@@ -41,7 +44,7 @@ int main()
    //
 
    std::cout << "Loss Functions:" << std::endl;
-   error = testLossFunctionGradients<TOpenCL>();
+   error = testLossFunctionGradients<OpenCL_t>();
    std::cout << "Total    : ";
    std::cout << "Maximum Relative Error = " << print_error(error);
    std::cout << std::endl << std::endl;
@@ -53,7 +56,7 @@ int main()
     //
 
     std::cout << "Regularization:" << std::endl;
-    error = testRegularizationGradients<TOpenCL>();
+    error = testRegularizationGradients<OpenCL_t>();
     std::cout << "Total    : ";
     std::cout << "Maximum Relative Error = " << print_error(error);
     std::cout << std::endl << std::endl;

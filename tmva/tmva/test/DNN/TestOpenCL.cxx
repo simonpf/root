@@ -21,8 +21,9 @@ using namespace TMVA::DNN;
 
 int main()
 {
+   using Scalar_t = Real_t;
 
-   TMatrixT<OpenCLDouble_t> A(1000, 1000), B(2000, 2000);
+   TMatrixT<Double_t> A(1000, 1000), B(2000, 2000);
 
    for (size_t i = 0; i < 1000; i++) {
       for (size_t j = 0; j < 1000; j++) {
@@ -36,13 +37,13 @@ int main()
       }
    }
 
-   TOpenCLMatrix Ad(A), Bd(B);
+   TOpenCLMatrix<Scalar_t, EOpenCLDeviceType::kGpu> Ad(A), Bd(B);
 
-   TOpenCL::Dropout(Ad, 0.5);
-   TOpenCL::Dropout(Bd, 0.5);
+   TOpenCL<Scalar_t, EOpenCLDeviceType::kGpu>::Dropout(Ad, 0.5);
+   TOpenCL<Scalar_t, EOpenCLDeviceType::kGpu>::Dropout(Bd, 0.5);
 
-   TMatrixT<OpenCLDouble_t> Ar(Ad);
-   TMatrixT<OpenCLDouble_t> Br(Bd);
+   TMatrixT<Double_t> Ar(Ad);
+   TMatrixT<Double_t> Br(Bd);
 
    std::cout << "A: " << Ar.Sum() / (1000.0 * 1000.0) << std::endl;
    std::cout << "B: " << Br.Sum() / (2000.0 * 2000.0) << std::endl;

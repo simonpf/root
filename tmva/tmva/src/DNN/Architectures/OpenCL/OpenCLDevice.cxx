@@ -25,8 +25,9 @@ namespace DNN  {
 
 // TOpenCLDevice
 //____________________________________________________________________________
-TOpenCLDevice::TOpenCLDevice(size_t nComputeQueues)
-    : fDevice(), fContext(), fProgram(), fKernels(), fNComputeQueues(nComputeQueues)
+template<typename AFloat, EOpenCLDeviceType AType>
+TOpenCLDevice<AFloat, AType>::TOpenCLDevice()
+    : fDevice(), fContext(), fProgram(), fKernels()
 {
    std::cout << "Constructing opencl device." << std::endl;
    try {
@@ -59,10 +60,7 @@ TOpenCLDevice::TOpenCLDevice(size_t nComputeQueues)
                    << std::endl << std::endl;
       }
       fDevice = devices[0];
-
-      for (size_t i = 0; i < fNComputeQueues; i++) {
-         fQueues.push_back(cl::CommandQueue(fContext, fDevice));
-      }
+      fDefaultQueue = cl::CommandQueue(fContext, fDevice);
 
       CompileKernels();
    } catch(cl::Error error) {
@@ -70,7 +68,9 @@ TOpenCLDevice::TOpenCLDevice(size_t nComputeQueues)
    }
 }
 
-void TOpenCLDevice::CompileKernels()
+//____________________________________________________________________________
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCLDevice<AFloat, AType>::CompileKernels()
 {
    const char * filename = STRINGIFY(__KERNEL_FILE__);
    std::fstream file(filename);
@@ -80,11 +80,13 @@ void TOpenCLDevice::CompileKernels()
    std::vector<cl::Device> devices(1);
    devices[0] = fDevice;
    cl::Program program(fContext, source, false);
+   std::string arguments("-cl-nv-verbose -I " STRINGIFY(__KERNEL_INCLUDE_DIRS__));
+   ((arguments += " -DAFloat=") += TypeName<AFloat>::value) += " ";
 
    try {
 
-      std::cout << "Arguments: -I " STRINGIFY(__KERNEL_INCLUDE_DIRS__) << std::endl;
-      program.build(devices, "-cl-nv-verbose -I " STRINGIFY(__KERNEL_INCLUDE_DIRS__));
+      std::cout << arguments << std::endl;
+      program.build(devices, arguments.c_str());
 
       // Arithmetic.
       fKernels[0] = cl::Kernel(program, "Hadamard");
@@ -138,6 +140,9 @@ void TOpenCLDevice::CompileKernels()
       std::fclose(fp);
    }
 }
+
+template class TOpenCLDevice<Real_t,   EOpenCLDeviceType::kGpu>;
+template class TOpenCLDevice<Double_t, EOpenCLDeviceType::kGpu>;
 
 } // namespace DNN
 } // namespace TMVA

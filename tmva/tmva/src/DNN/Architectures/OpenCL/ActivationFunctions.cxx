@@ -22,16 +22,19 @@ namespace DNN  {
 /** Launch an OpenCL kernel that maps the given Kernel to the matrix A, by
  *  launching one workgroup per column. */
 //____________________________________________________________________________
-inline void ExecuteActivationFunctionKernel(EOpenCLKernel kernel,
-                                            TOpenCLMatrix & A)
+template<typename AFloat, EOpenCLDeviceType AType>
+inline void ExecuteActivationFunctionKernel(
+    EOpenCLKernel kernel,
+    TOpenCLMatrix<AFloat, AType> & A)
 {
-   const TOpenCLDevice &device = A.GetDevice();
+   const TOpenCLDevice<AFloat, AType> & device = A.GetDevice();
 
    int m     = (int) A.GetNrows();
    int n     = (int) A.GetNcols();
 
-   cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
-   cl::NDRange local(1, TOpenCLDevice::localSize);
+   cl::NDRange global(static_cast<size_t>(n),
+                      TOpenCLDevice<AFloat, AType>::localSize);
+   cl::NDRange local(1, TOpenCLDevice<AFloat, AType>::localSize);
 
    cl::CommandQueue queue = A.GetComputeQueue();
    device.EnqueueKernel(kernel, queue, global, local, A.GetElementBuffer(), m);
@@ -40,18 +43,20 @@ inline void ExecuteActivationFunctionKernel(EOpenCLKernel kernel,
 /** Launch an OpenCL kernel that applies an activation function derivative kernel
  *  to the two matrices by launching one workgroup per column */
 //____________________________________________________________________________
+template<typename AFloat, EOpenCLDeviceType AType>
 inline void ExecuteActivationFunctionDerivativeKernel(
-    EOpenCLKernel kernel,
-    TOpenCLMatrix & B,
-    const TOpenCLMatrix &A)
+          EOpenCLKernel kernel,
+          TOpenCLMatrix<AFloat, AType> & B,
+    const TOpenCLMatrix<AFloat, AType> & A)
 {
-   const TOpenCLDevice &device = A.GetDevice();
+   const TOpenCLDevice<AFloat, AType> & device = A.GetDevice();
 
    int m     = (int) A.GetNrows();
    int n     = (int) A.GetNcols();
 
-   cl::NDRange global(static_cast<size_t>(n), TOpenCLDevice::localSize);
-   cl::NDRange local(1, TOpenCLDevice::localSize);
+   cl::NDRange global(static_cast<size_t>(n),
+                      TOpenCLDevice<AFloat, AType>::localSize);
+   cl::NDRange local(1, TOpenCLDevice<AFloat, AType>::localSize);
    cl::CommandQueue queue = A.GetComputeQueue();
    device.EnqueueKernel(kernel, queue, global, local,
                         B.GetElementBuffer(), A.GetElementBuffer(), m);
@@ -59,94 +64,111 @@ inline void ExecuteActivationFunctionDerivativeKernel(
 }
 
 //____________________________________________________________________________
-void TOpenCL::Identity(TOpenCLMatrix & /*A*/) {}
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::Identity(TOpenCLMatrix<AFloat, AType> & /*A*/) {}
 
 //____________________________________________________________________________
-void TOpenCL::IdentityDerivative(TOpenCLMatrix & B,
-                                 const TOpenCLMatrix & A)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::IdentityDerivative(
+          TOpenCLMatrix<AFloat, AType> & B,
+    const TOpenCLMatrix<AFloat, AType> & A)
 {
    ExecuteActivationFunctionDerivativeKernel(EOpenCLKernel::kIdentityDerivative,
                                              B, A);
 }
 
 //____________________________________________________________________________
-void TOpenCL::Relu(TOpenCLMatrix &A)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::Relu(TOpenCLMatrix<AFloat, AType> &A)
 {
    ExecuteActivationFunctionKernel(EOpenCLKernel::kRelu, A);
 }
 
 //____________________________________________________________________________
-void TOpenCL::ReluDerivative(      TOpenCLMatrix & B,
-                             const TOpenCLMatrix & A)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::ReluDerivative(      TOpenCLMatrix<AFloat, AType> & B,
+                                            const TOpenCLMatrix<AFloat, AType> & A)
 {
    ExecuteActivationFunctionDerivativeKernel(EOpenCLKernel::kReluDerivative, B, A);
 }
 
 //____________________________________________________________________________
-void TOpenCL::Sigmoid(TOpenCLMatrix &A)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::Sigmoid(TOpenCLMatrix<AFloat, AType> &A)
 {
    ExecuteActivationFunctionKernel(EOpenCLKernel::kSigmoid, A);
 }
 
 //____________________________________________________________________________
-void TOpenCL::SigmoidDerivative(      TOpenCLMatrix & B,
-                                const TOpenCLMatrix & A)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::SigmoidDerivative(      TOpenCLMatrix<AFloat, AType> & B,
+                                               const TOpenCLMatrix<AFloat, AType> & A)
 {
    ExecuteActivationFunctionDerivativeKernel(EOpenCLKernel::kSigmoidDerivative,
                                              B, A);
 }
 
 //____________________________________________________________________________
-void TOpenCL::Tanh(TOpenCLMatrix &A)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::Tanh(TOpenCLMatrix<AFloat, AType> &A)
 {
    ExecuteActivationFunctionKernel(EOpenCLKernel::kTanh, A);
 }
 
 //____________________________________________________________________________
-void TOpenCL::TanhDerivative(      TOpenCLMatrix & B,
-                             const TOpenCLMatrix & A)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::TanhDerivative(      TOpenCLMatrix<AFloat, AType> & B,
+                                            const TOpenCLMatrix<AFloat, AType> & A)
 {
    ExecuteActivationFunctionDerivativeKernel(EOpenCLKernel::kTanhDerivative,
                                              B, A);
 }
 
 //____________________________________________________________________________
-void TOpenCL::SymmetricRelu(TOpenCLMatrix &A)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::SymmetricRelu(TOpenCLMatrix<AFloat, AType> &A)
 {
    ExecuteActivationFunctionKernel(EOpenCLKernel::kSymmetricRelu, A);
 }
 
 //____________________________________________________________________________
-void TOpenCL::SymmetricReluDerivative(      TOpenCLMatrix & B,
-                                      const TOpenCLMatrix & A)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::SymmetricReluDerivative(
+          TOpenCLMatrix<AFloat, AType> & B,
+    const TOpenCLMatrix<AFloat, AType> & A)
 {
    ExecuteActivationFunctionDerivativeKernel(EOpenCLKernel::kSymmetricReluDerivative,
                                              B, A);
 }
 
 //____________________________________________________________________________
-void TOpenCL::SoftSign(TOpenCLMatrix &A)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::SoftSign(TOpenCLMatrix<AFloat, AType> &A)
 {
    ExecuteActivationFunctionKernel(EOpenCLKernel::kSoftSign, A);
 }
 
 //____________________________________________________________________________
-void TOpenCL::SoftSignDerivative(      TOpenCLMatrix & B,
-                                 const TOpenCLMatrix & A)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::SoftSignDerivative(
+          TOpenCLMatrix<AFloat, AType> & B,
+    const TOpenCLMatrix<AFloat, AType> & A)
 {
    ExecuteActivationFunctionDerivativeKernel(EOpenCLKernel::kSoftSignDerivative,
                                              B, A);
 }
 
 //____________________________________________________________________________
-void TOpenCL::Gauss(TOpenCLMatrix &A)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::Gauss(TOpenCLMatrix<AFloat, AType> &A)
 {
    ExecuteActivationFunctionKernel(EOpenCLKernel::kGauss, A);
 }
 
 //____________________________________________________________________________
-void TOpenCL::GaussDerivative(      TOpenCLMatrix & B,
-                                 const TOpenCLMatrix & A)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::GaussDerivative(      TOpenCLMatrix<AFloat, AType> & B,
+                                             const TOpenCLMatrix<AFloat, AType> & A)
 {
    ExecuteActivationFunctionDerivativeKernel(EOpenCLKernel::kGaussDerivative, B, A);
 }

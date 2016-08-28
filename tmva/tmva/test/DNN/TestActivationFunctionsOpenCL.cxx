@@ -23,19 +23,22 @@ using namespace TMVA::DNN;
 
 int main()
 {
+    using Scalar_t = Double_t;
+    using OpenCL_t = TOpenCL<Scalar_t, EOpenCLDeviceType::kGpu>;
+
     std::cout << "Testing Activation Functions:" << std::endl;
 
     double error;
 
     // Identity.
 
-    error = testIdentity<TOpenCL>(10);
+    error = testIdentity<OpenCL_t>(10);
     std::cout << "Testing identity activation:            ";
     std::cout << "maximum relative error = " << error << std::endl;
     if (error > 1e-10)
         return 1;
 
-    error = testIdentityDerivative<TOpenCL>(10);
+    error = testIdentityDerivative<OpenCL_t>(10);
     std::cout << "Testing identity activation derivative: ";
     std::cout << "maximum relative error = " << error << std::endl;
     if (error > 1e-10)
@@ -43,13 +46,13 @@ int main()
 
     // ReLU.
 
-    error = testRelu<TOpenCL>(10);
+    error = testRelu<OpenCL_t>(10);
     std::cout << "Testing ReLU activation:                ";
     std::cout << "maximum relative error = " << error << std::endl;
     if (error > 1e-10)
         return 1;
 
-    error = testReluDerivative<TOpenCL>(10);
+    error = testReluDerivative<OpenCL_t>(10);
     std::cout << "Testing ReLU activation derivative:     ";
     std::cout << "maximum relative error = " << error << std::endl;
     if (error > 1e-10)
@@ -57,13 +60,13 @@ int main()
 
     // Sigmoid.
 
-    error = testSigmoid<TOpenCL>(10);
+    error = testSigmoid<OpenCL_t>(10);
     std::cout << "Testing Sigmoid activation:             ";
     std::cout << "maximum relative error = " << error << std::endl;
     if (error > 1e-10)
         return 1;
 
-    error = testSigmoidDerivative<TOpenCL>(10);
+    error = testSigmoidDerivative<OpenCL_t>(10);
     std::cout << "Testing Sigmoid activation derivative:  ";
     std::cout << "maximum relative error = " << error << std::endl;
     if (error > 1e-10)
@@ -71,13 +74,13 @@ int main()
 
     // Tanh.
 
-    error = testTanh<TOpenCL>(10);
+    error = testTanh<OpenCL_t>(10);
     std::cout << "Testing Tanh activation:                ";
     std::cout << "maximum relative error = " << error << std::endl;
     if (error > 1e-10)
         return 1;
 
-    error = testTanhDerivative<TOpenCL>(10);
+    error = testTanhDerivative<OpenCL_t>(10);
     std::cout << "Testing Tanh activation derivative:     ";
     std::cout << "maximum relative error = " << error << std::endl;
     if (error > 1e-7)
@@ -85,13 +88,13 @@ int main()
 
     // Symmetric Relu.
 
-    error = testSymmetricRelu<TOpenCL>(10);
+    error = testSymmetricRelu<OpenCL_t>(10);
     std::cout << "Testing Sym. Relu activation:           ";
     std::cout << "maximum relative error = " << error << std::endl;
     if (error > 1e-10)
         return 1;
 
-    error = testSymmetricReluDerivative<TOpenCL>(10);
+    error = testSymmetricReluDerivative<OpenCL_t>(10);
     std::cout << "Testing Sym. Relu activation derivative:";
     std::cout << "maximum relative error = " << error << std::endl;
     if (error > 1e-10)
@@ -99,13 +102,13 @@ int main()
 
     // Soft Sign.
 
-    error = testSoftSign<TOpenCL>(10);
+    error = testSoftSign<OpenCL_t>(10);
     std::cout << "Testing soft sign activation:           ";
     std::cout << "maximum relative error = " << error << std::endl;
     if (error > 1e-10)
         return 1;
 
-    error = testSoftSignDerivative<TOpenCL>(10);
+    error = testSoftSignDerivative<OpenCL_t>(10);
     std::cout << "Testing soft sign activation derivative:";
     std::cout << "maximum relative error = " << error << std::endl;
     if (error > 1e-10)
@@ -113,13 +116,13 @@ int main()
 
     // Gauss.
 
-    error = testGauss<TOpenCL>(10);
+    error = testGauss<OpenCL_t>(10);
     std::cout << "Testing Gauss activation:               ";
     std::cout << "maximum relative error = " << error << std::endl;
     if (error > 1e-10)
         return 1;
 
-    error = testGaussDerivative<TOpenCL>(10);
+    error = testGaussDerivative<OpenCL_t>(10);
     std::cout << "Testing Gauss activation derivative:    ";
     std::cout << "maximum relative error = " << error << std::endl;
     if (error > 1e-10)

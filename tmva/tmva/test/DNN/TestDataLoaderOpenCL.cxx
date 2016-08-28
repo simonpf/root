@@ -20,7 +20,22 @@ using namespace TMVA::DNN;
 
 int main()
 {
+   using Scalar_t = Real_t;
+   using OpenCL_t = TOpenCL<Scalar_t, EOpenCLDeviceType::kGpu>;
 
-   testDataLoader<TOpenCL>();
+   std::cout << "Testing data loader:" << std::endl;
+
+   Scalar_t maximumError = 0.0;
+
+   Scalar_t error = testSum<OpenCL_t>();
+   std::cout << "Sum:      Maximum relative error = " << error << std::endl;
+   maximumError = std::max(error, maximumError);
+   error = testIdentity<OpenCL_t>();
+   std::cout << "Identity: Maximum relative error = " << error << std::endl;
+   maximumError = std::max(error, maximumError);
+
+   if (maximumError > 1e-3) {
+      return 1;
+   }
    return 0;
 }

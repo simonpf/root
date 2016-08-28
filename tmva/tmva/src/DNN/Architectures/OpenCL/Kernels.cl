@@ -20,7 +20,7 @@
 //
 // Reduction Functions
 //____________________________________________________________________________
-double SumWorkGroup(__local double *sdata)
+AFloat SumWorkGroup(__local AFloat *sdata)
 {
    int localSize  = get_local_size(0) * get_local_size(1);
    int localIndex = get_local_id(0) * get_local_size(1) + get_local_id(1);
@@ -35,8 +35,8 @@ double SumWorkGroup(__local double *sdata)
 }
 
 //____________________________________________________________________________
-__kernel void Hadamard(__global double *B,
-                       __global const double *A,
+__kernel void Hadamard(__global AFloat *B,
+                       __global const AFloat *A,
                        int m, int n)
 {
    int globalIndexX = get_global_id(0);
@@ -51,10 +51,10 @@ __kernel void Hadamard(__global double *B,
 }
 
 //____________________________________________________________________________
-__kernel void SumColumns(__global double *B,
-                         __global const double  *A,
+__kernel void SumColumns(__global AFloat *B,
+                         __global const AFloat  *A,
                          int m, int n,
-                         __local double *sdata)
+                         __local AFloat *sdata)
 {
    int globalIndexX = get_global_id(0);
    int localIndexY  = get_local_id(1);
@@ -62,35 +62,35 @@ __kernel void SumColumns(__global double *B,
 
    int offset     = globalIndexX * m;
 
-   double sum = 0.0;
+   AFloat sum = 0.0;
    for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
       sum += A[i];
    }
    sdata[localIndexY] = sum;
 
-   double totalSum = SumWorkGroup(sdata);
+   AFloat totalSum = SumWorkGroup(sdata);
    if (localIndexY == 0) {
       B[globalIndexX] = totalSum;
    }
 }
 
 //____________________________________________________________________________
-__kernel void SumVector(__global double * result,
+__kernel void SumVector(__global AFloat * result,
                         int n,
-                        __global double * v,
-                        __local  double * sdata)
+                        __global AFloat * v,
+                        __local  AFloat * sdata)
 {
    int globalIndexX = get_global_id(0);
    int localIndexY  = get_local_id(1);
    int localSizeY   = get_local_size(1);
 
    if (globalIndexX == 0) {
-      double sum = 0.0;
+      AFloat sum = 0.0;
       for (int i = localIndexY; i < n; i += localSizeY) {
          sum += v[i];
       }
       sdata[localIndexY] = sum;
-      double totalSum = SumWorkGroup(sdata);
+      AFloat totalSum = SumWorkGroup(sdata);
       if (localIndexY == 0) {
          result[0] = totalSum;
       }
@@ -100,8 +100,8 @@ __kernel void SumVector(__global double * result,
 //
 // Propagation
 //____________________________________________________________________________
-__kernel void AddRowWise(__global double * B,
-                         __global const double * A,
+__kernel void AddRowWise(__global AFloat * B,
+                         __global const AFloat * A,
                          int m)
 {
    int globalIndexX = get_global_id(0);
@@ -110,7 +110,7 @@ __kernel void AddRowWise(__global double * B,
 
    int offset     = globalIndexX * m;
 
-   double sum = 0.0;
+   AFloat sum = 0.0;
    for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
        B[i] += A[globalIndexX];
    }
@@ -119,11 +119,11 @@ __kernel void AddRowWise(__global double * B,
 //
 // Loss Functions
 //____________________________________________________________________________
-__kernel void SquaredErrorColumns(__global const double * A,
-                                  __global const double * B,
+__kernel void SquaredErrorColumns(__global const AFloat * A,
+                                  __global const AFloat * B,
                                   int m,
-                                  __local  double *sdata,
-                                  __global double *gsdata)
+                                  __local  AFloat *sdata,
+                                  __global AFloat *gsdata)
 {
    int globalIndexX = get_global_id(0);
    int localIndexY  = get_local_id(1);
@@ -131,25 +131,25 @@ __kernel void SquaredErrorColumns(__global const double * A,
 
    int offset     = globalIndexX * m;
 
-   double sum = 0.0;
+   AFloat sum = 0.0;
    for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
-      double err = B[i] - A[i];
+      AFloat err = B[i] - A[i];
       sum += err * err;
    }
    sdata[localIndexY] = sum;
 
-   double totalSum = SumWorkGroup(sdata);
+   AFloat totalSum = SumWorkGroup(sdata);
    if (localIndexY == 0) {
       gsdata[globalIndexX] = totalSum;
    }
 }
 
 //____________________________________________________________________________
-__kernel void CrossEntropyColumns(__global const double * A,
-                                  __global const double * B,
+__kernel void CrossEntropyColumns(__global const AFloat * A,
+                                  __global const AFloat * B,
                                   int m,
-                                  __local  double *sdata,
-                                  __global double *gsdata)
+                                  __local  AFloat *sdata,
+                                  __global AFloat *gsdata)
 {
    int globalIndexX = get_global_id(0);
    int localIndexY  = get_local_id(1);
@@ -157,23 +157,23 @@ __kernel void CrossEntropyColumns(__global const double * A,
 
    int offset     = globalIndexX * m;
 
-   double sum = 0.0;
+   AFloat sum = 0.0;
    for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
-      double sig = 1.0 / (1.0 + exp(-B[i]));
-      double y   = A[i];
+      AFloat sig = 1.0 / (1.0 + exp(-B[i]));
+      AFloat y   = A[i];
       sum -= y * log(sig) + (1.0 - y) * log(1.0 - sig);
    }
    sdata[localIndexY] = sum;
 
-   double totalSum = SumWorkGroup(sdata);
+   AFloat totalSum = SumWorkGroup(sdata);
    if (localIndexY == 0) {
       gsdata[globalIndexX] = totalSum;
    }
 }
 //____________________________________________________________________________
-__kernel void MeanSquaredErrorGradients(__global double * C,
-                                        __global const double * A,
-                                        __global const double * B,
+__kernel void MeanSquaredErrorGradients(__global AFloat * C,
+                                        __global const AFloat * A,
+                                        __global const AFloat * B,
                                         int m, int n)
 {
    int globalIndexX = get_global_id(0);
@@ -182,16 +182,16 @@ __kernel void MeanSquaredErrorGradients(__global double * C,
 
    int offset     = globalIndexX * m;
 
-   double norm = 1.0 / ((double) (m * n));
+   AFloat norm = 1.0 / ((AFloat) (m * n));
    for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
       C[i] = 2.0 * norm * (B[i] - A[i]);
    }
 }
 
 //____________________________________________________________________________
-__kernel void CrossEntropyGradients(__global double * C,
-                                    __global const double * A,
-                                    __global const double * B,
+__kernel void CrossEntropyGradients(__global AFloat * C,
+                                    __global const AFloat * A,
+                                    __global const AFloat * B,
                                     int m, int n)
 {
    int globalIndexX = get_global_id(0);
@@ -200,10 +200,10 @@ __kernel void CrossEntropyGradients(__global double * C,
 
    int offset     = globalIndexX * m;
 
-   double norm = 1.0 / ((double) (m * n));
+   AFloat norm = 1.0 / ((AFloat) (m * n));
    for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
-      double sig = 1.0 / (1.0 + exp(-B[i]));
-      double y   = A[i];
+      AFloat sig = 1.0 / (1.0 + exp(-B[i]));
+      AFloat y   = A[i];
       C[i] = norm * (sig - y);
    }
 }
@@ -212,8 +212,8 @@ __kernel void CrossEntropyGradients(__global double * C,
 // Copy
 //
 //____________________________________________________________________________
-__kernel void Copy(__global double * B,
-                   __global const double * A,
+__kernel void Copy(__global AFloat * B,
+                   __global const AFloat * A,
                    int m)
 {
    int globalIndexX = get_global_id(0);
@@ -231,8 +231,8 @@ __kernel void Copy(__global double * B,
 // Activation Functions
 //
 //____________________________________________________________________________
-__kernel void IdentityDerivative(__global double * B,
-                                 __global const double * A,
+__kernel void IdentityDerivative(__global AFloat * B,
+                                 __global const AFloat * A,
                                   int m)
 {
    int globalIndexX = get_global_id(0);
@@ -247,7 +247,7 @@ __kernel void IdentityDerivative(__global double * B,
 }
 
 //____________________________________________________________________________
-__kernel void Relu(__global double * A, int m)
+__kernel void Relu(__global AFloat * A, int m)
 {
    int globalIndexX = get_global_id(0);
    int localIndexY  = get_local_id(1);
@@ -261,8 +261,8 @@ __kernel void Relu(__global double * A, int m)
 }
 
 //____________________________________________________________________________
-__kernel void ReluDerivative(__global double * B,
-                             __global const double * A,
+__kernel void ReluDerivative(__global AFloat * B,
+                             __global const AFloat * A,
                              int m)
 {
    int globalIndexX = get_global_id(0);
@@ -278,7 +278,7 @@ __kernel void ReluDerivative(__global double * B,
 
 
 //____________________________________________________________________________
-__kernel void Sigmoid(__global double * A, int m)
+__kernel void Sigmoid(__global AFloat * A, int m)
 {
    int globalIndexX = get_global_id(0);
    int localIndexY  = get_local_id(1);
@@ -292,8 +292,8 @@ __kernel void Sigmoid(__global double * A, int m)
 }
 
 //____________________________________________________________________________
-__kernel void SigmoidDerivative(__global double * B,
-                                __global const double * A,
+__kernel void SigmoidDerivative(__global AFloat * B,
+                                __global const AFloat * A,
                                 int m)
 {
    int globalIndexX = get_global_id(0);
@@ -303,13 +303,13 @@ __kernel void SigmoidDerivative(__global double * B,
    int offset     = globalIndexX * m;
 
    for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
-      double sig = 1.0 / (1.0 + exp(-A[i]));
+      AFloat sig = 1.0 / (1.0 + exp(-A[i]));
       B[i] = sig * (1.0 - sig);
    }
 }
 
 //____________________________________________________________________________
-__kernel void Tanh(__global double * A, int m)
+__kernel void Tanh(__global AFloat * A, int m)
 {
    int globalIndexX = get_global_id(0);
    int localIndexY  = get_local_id(1);
@@ -323,8 +323,8 @@ __kernel void Tanh(__global double * A, int m)
 }
 
 //____________________________________________________________________________
-__kernel void TanhDerivative(__global double * B,
-                             __global const double * A,
+__kernel void TanhDerivative(__global AFloat * B,
+                             __global const AFloat * A,
                              int m)
 {
    int globalIndexX = get_global_id(0);
@@ -334,13 +334,13 @@ __kernel void TanhDerivative(__global double * B,
    int offset     = globalIndexX * m;
 
    for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
-      double t = tanh(A[i]);
+      AFloat t = tanh(A[i]);
       B[i] = 1.0 - t*t;
    }
 }
 
 //____________________________________________________________________________
-__kernel void SymmetricRelu(__global double * A, int m)
+__kernel void SymmetricRelu(__global AFloat * A, int m)
 {
    int globalIndexX = get_global_id(0);
    int localIndexY  = get_local_id(1);
@@ -354,8 +354,8 @@ __kernel void SymmetricRelu(__global double * A, int m)
 }
 
 //____________________________________________________________________________
-__kernel void SymmetricReluDerivative(__global double * B,
-                                      __global const double * A,
+__kernel void SymmetricReluDerivative(__global AFloat * B,
+                                      __global const AFloat * A,
                                       int m)
 {
    int globalIndexX = get_global_id(0);
@@ -370,7 +370,7 @@ __kernel void SymmetricReluDerivative(__global double * B,
 }
 
 //____________________________________________________________________________
-__kernel void SoftSign(__global double * A, int m)
+__kernel void SoftSign(__global AFloat * A, int m)
 {
    int globalIndexX = get_global_id(0);
    int localIndexY  = get_local_id(1);
@@ -384,8 +384,8 @@ __kernel void SoftSign(__global double * A, int m)
 }
 
 //____________________________________________________________________________
-__kernel void SoftSignDerivative(__global double * B,
-                                 __global const double * A,
+__kernel void SoftSignDerivative(__global AFloat * B,
+                                 __global const AFloat * A,
                                  int m)
 {
    int globalIndexX = get_global_id(0);
@@ -394,13 +394,13 @@ __kernel void SoftSignDerivative(__global double * B,
 
    int offset     = globalIndexX * m;
    for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
-      double t = 1.0 + fabs(A[i]);
+      AFloat t = 1.0 + fabs(A[i]);
       B[i] = 1 / (t * t);
    }
 }
 
 //____________________________________________________________________________
-__kernel void Gauss(__global double * A, int m)
+__kernel void Gauss(__global AFloat * A, int m)
 {
    int globalIndexX = get_global_id(0);
    int localIndexY  = get_local_id(1);
@@ -414,8 +414,8 @@ __kernel void Gauss(__global double * A, int m)
 }
 
 //____________________________________________________________________________
-__kernel void GaussDerivative(__global double * B,
-                              __global const double * A,
+__kernel void GaussDerivative(__global AFloat * B,
+                              __global const AFloat * A,
                               int m)
 {
    int globalIndexX = get_global_id(0);
@@ -424,7 +424,7 @@ __kernel void GaussDerivative(__global double * B,
 
    int offset     = globalIndexX * m;
    for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
-      double t = exp(-A[i] * A[i]);
+      AFloat t = exp(-A[i] * A[i]);
       B[i] = -2.0 * A[i] * t;
    }
 }
@@ -433,10 +433,10 @@ __kernel void GaussDerivative(__global double * B,
 // Regularization Functions
 //
 //____________________________________________________________________________
-__kernel void L1RegularizationColumns(__global const double * A,
+__kernel void L1RegularizationColumns(__global const AFloat * A,
                                       int m,
-                                      __local  double *sdata,
-                                      __global double *gsdata)
+                                      __local  AFloat *sdata,
+                                      __global AFloat *gsdata)
 {
    int globalIndexX = get_global_id(0);
    int localIndexY  = get_local_id(1);
@@ -444,21 +444,21 @@ __kernel void L1RegularizationColumns(__global const double * A,
 
    int offset     = globalIndexX * m;
 
-   double sum = 0.0;
+   AFloat sum = 0.0;
    for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
       sum += fabs(A[i]);
    }
    sdata[localIndexY] = sum;
 
-   double totalSum = SumWorkGroup(sdata);
+   AFloat totalSum = SumWorkGroup(sdata);
    if (localIndexY == 0) {
       gsdata[globalIndexX] = totalSum;
    }
 }
 
-__kernel void AddL1RegularizationGradients(__global double * B,
-                                           __global const double * A,
-                                           int m, double weightDecay)
+__kernel void AddL1RegularizationGradients(__global AFloat * B,
+                                           __global const AFloat * A,
+                                           int m, AFloat weightDecay)
 {
    int globalIndexX = get_global_id(0);
    int localIndexY  = get_local_id(1);
@@ -472,10 +472,10 @@ __kernel void AddL1RegularizationGradients(__global double * B,
 }
 
 //____________________________________________________________________________
-__kernel void L2RegularizationColumns(__global const double * A,
+__kernel void L2RegularizationColumns(__global const AFloat * A,
                                       int m,
-                                      __local  double *sdata,
-                                      __global double *gsdata)
+                                      __local  AFloat *sdata,
+                                      __global AFloat *gsdata)
 {
    int globalIndexX = get_global_id(0);
    int localIndexY  = get_local_id(1);
@@ -483,22 +483,22 @@ __kernel void L2RegularizationColumns(__global const double * A,
 
    int offset     = globalIndexX * m;
 
-   double sum = 0.0;
+   AFloat sum = 0.0;
    for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
       sum += A[i] * A[i];
    }
    sdata[localIndexY] = sum;
 
-   double totalSum = SumWorkGroup(sdata);
+   AFloat totalSum = SumWorkGroup(sdata);
    if (localIndexY == 0) {
       gsdata[globalIndexX] = totalSum;
    }
 }
 
 //____________________________________________________________________________
-__kernel void AddL2RegularizationGradients(__global double * B,
-                                           __global const double * A,
-                                           int m, double weightDecay)
+__kernel void AddL2RegularizationGradients(__global AFloat * B,
+                                           __global const AFloat * A,
+                                           int m, AFloat weightDecay)
 {
    int globalIndexX = get_global_id(0);
    int localIndexY  = get_local_id(1);
@@ -512,9 +512,9 @@ __kernel void AddL2RegularizationGradients(__global double * B,
 }
 
 //____________________________________________________________________________
-__kernel void Dropout(__global double * B,
+__kernel void Dropout(__global AFloat * B,
                       __global clrngLfsr113Stream * streams,
-                      int m, double dropoutProbability)
+                      int m, AFloat dropoutProbability)
 {
    int globalIndexX = get_global_id(0);
    int globalIndex  = globalIndexX * get_global_size(1) + get_global_id(1);
@@ -527,7 +527,7 @@ __kernel void Dropout(__global double * B,
    clrngLfsr113CopyOverStreamsFromGlobal(1, &privateStream, streams + globalIndex);
 
    for (int i = offset + localIndexY; i < offset + m; i += localSizeY) {
-      double random = clrngLfsr113RandomU01(&privateStream);
+      AFloat random = clrngLfsr113RandomU01(&privateStream);
       if (random < dropoutProbability) {
          B[i] /= dropoutProbability;
       } else {

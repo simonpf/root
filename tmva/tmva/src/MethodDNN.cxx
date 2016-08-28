@@ -806,7 +806,7 @@ void TMVA::MethodDNN::TrainGpu()
             Log() << std::setw(10) << stepCount << " | "
                   << std::setw(12) << trainingError
                   << std::setw(12) << testError
-                  << std::setw(12) << nFlops / seconds
+                  << std::setw(12) << nFlops
                   << std::setw(12) << minimizer.GetConvergenceCount() << Endl;
             if (converged) {
                Log() << Endl;
@@ -955,7 +955,7 @@ void TMVA::MethodDNN::TrainCpu()
             Log() << std::setw(10) << stepCount << " | "
                   << std::setw(12) << trainingError
                   << std::setw(12) << testError
-                  << std::setw(12) << nFlops / seconds
+                  << std::setw(12) << nFlops
                   << std::setw(12) << minimizer.GetConvergenceCount() << Endl;
             if (converged) {
                Log() << Endl;

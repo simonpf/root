@@ -22,34 +22,37 @@ using namespace TMVA::DNN;
 
 int main()
 {
-   double error;
+   using Scalar_t = Real_t;
+   using OpenCL_t = TOpenCL<Scalar_t, EOpenCLDeviceType::kGpu>;
+
+   std::cout << "Testing loss functions:" << std::endl;
 
    //
    // Mean Squared Error.
    //
 
-   error = testMeanSquaredError<TOpenCL>(10);
+   Double_t error = testMeanSquaredError<OpenCL_t>(10);
    std::cout << "Testing mean squared error loss:     ";
    std::cout << "maximum relative error = " << print_error(error) << std::endl;
-   if (error > 1e-10)
+   if (error > 1e-3)
        return 1;
 
-   error = testMeanSquaredErrorGradients<TOpenCL>(10);
+   error = testMeanSquaredErrorGradients<OpenCL_t>(10);
    std::cout << "Testing mean squared error gradient: ";
    std::cout << "maximum relative error = " << print_error(error) << std::endl;
-   if (error > 1e-10)
+   if (error > 1e-3)
        return 1;
 
-   error = testCrossEntropy<TOpenCL>(10);
+   error = testCrossEntropy<OpenCL_t>(10);
    std::cout << "Testing cross entropy loss:          ";
    std::cout << "maximum relative error = " << print_error(error) << std::endl;
-   if (error > 1e-10)
+   if (error > 1e-3)
        return 1;
 
-    error = testCrossEntropyGradients<TOpenCL>(10);
+    error = testCrossEntropyGradients<OpenCL_t>(10);
     std::cout << "Testing cross entropy gradient:      ";
     std::cout << "maximum relative error = " << print_error(error) << std::endl;
-    if (error > 1e-10)
+    if (error > 1e-3)
         return 1;
 
    return 0;

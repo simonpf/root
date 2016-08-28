@@ -24,13 +24,14 @@ namespace DNN
 {
 
 //______________________________________________________________________________
-void TOpenCL::InitializeGauss(TOpenCLMatrix & A)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::InitializeGauss(TOpenCLMatrix<AFloat, AType> & A)
 {
    size_t m,n;
    m = A.GetNrows();
    n = A.GetNcols();
 
-   TMatrixT<OpenCLDouble_t> B(m, n);
+   TMatrixT<Double_t> B(m, n);
    TRandom rand(time(nullptr));
    Real_t sigma = sqrt(2.0 / ((Real_t) n));
 
@@ -44,13 +45,14 @@ void TOpenCL::InitializeGauss(TOpenCLMatrix & A)
 }
 
 //______________________________________________________________________________
-void TOpenCL::InitializeUniform(TOpenCLMatrix & A)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::InitializeUniform(TOpenCLMatrix<AFloat, AType> & A)
 {
    size_t m,n;
    m = A.GetNrows();
    n = A.GetNcols();
 
-   TMatrixT<OpenCLDouble_t> B(m, n);
+   TMatrixT<Double_t> B(m, n);
    TRandom rand(time(nullptr));
    Real_t range = sqrt(2.0 / ((Real_t) n));
 
@@ -63,12 +65,13 @@ void TOpenCL::InitializeUniform(TOpenCLMatrix & A)
 }
 
 //______________________________________________________________________________
-void TOpenCL::InitializeIdentity(TOpenCLMatrix & A)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::InitializeIdentity(TOpenCLMatrix<AFloat, AType> & A)
 {
    size_t m,n;
    m = A.GetNrows();
    n = A.GetNcols();
-   TMatrixT<OpenCLDouble_t> B(m, n);
+   TMatrixT<Double_t> B(m, n);
 
    for (size_t i = 0; i < m; i++) {
       for (size_t j = 0; j < n ; j++) {
@@ -83,14 +86,15 @@ void TOpenCL::InitializeIdentity(TOpenCLMatrix & A)
 }
 
 //______________________________________________________________________________
-void TOpenCL::InitializeZero(TOpenCLMatrix & A)
+template<typename AFloat, EOpenCLDeviceType AType>
+void TOpenCL<AFloat, AType>::InitializeZero(TOpenCLMatrix<AFloat, AType> & A)
 {
    size_t m,n;
    m = A.GetNrows();
    n = A.GetNcols();
-   TMatrixT<OpenCLDouble_t> B(m, n);
+   TMatrixT<Double_t> B(m, n);
 
-   for (size_t i = 0; i < m * n; i++) {
+   for (size_t i = 0; i < m; i++) {
       for (size_t j = 0; j < n ; j++) {
          B(i,j) = 0.0;
       }

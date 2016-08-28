@@ -20,6 +20,7 @@
 #define __CL_ENABLE_EXCEPTIONS
 #define __CL_VERSION_1_2
 
+#include "Rtypes.h"
 #include "CL/cl.hpp"
 #include <tbb/mutex.h>
 #include <vector>
@@ -29,8 +30,15 @@
 namespace TMVA {
 namespace DNN  {
 
-class TOpenCLMatrix;
+/** Enum class represting OpenCL device types. */
+enum class EOpenCLDeviceType : int {
+    kAccelerator = 0,
+    kCpu         = 1,
+    kGpu         = 2
+};
 
+/** Enum class representing the OpenCL kernels requires
+ *  to implement the low-level interface. */
 enum class EOpenCLKernel : int {
 
    // Arithmetic.
@@ -75,6 +83,41 @@ enum class EOpenCLKernel : int {
    kDropout = 26
 };
 
+/** Helper struct converting a floating pointer number type to the corresponding
+*  OpenCL C data type as a pointer to const char. */
+template<typename T>
+struct TypeName;
+
+template<>
+struct TypeName<Real_t>
+{
+    static constexpr const char * value = "float";
+};
+
+template<>
+struct TypeName<Double_t>
+{
+    static constexpr const char * value = "double";
+};
+
+template <typename AFloat, EOpenCLDeviceType AType>
+class TOpenCLMatrix;
+
+//____________________________________________________________________________
+//
+// OpenCL Device Class
+//____________________________________________________________________________
+/** Helper class representing OpenCL devices. This class takes care of
+ *  initializing the OpenCL device as well as compiling the kernels. Also
+ *  provides helper functions for error handling and enqueueing of kernels.
+ *
+ * \tparam AFloat Floating point type to represent matrix elements on the device.
+ * Supported types are Double_t and Real_t, which are mapped to the double precision
+ * and single precision floating point types on the device.
+ * \tparam ADeviceType The type of the OpenCL device represented by an
+ * EOpenCLDevice enum.
+ */
+template<typename AFloat, EOpenCLDeviceType AType = EOpenCLDeviceType::kGpu>
 class TOpenCLDevice
 {
 private:
@@ -83,7 +126,7 @@ private:
    cl::Context      fContext;
    cl::Program      fProgram;
    cl::Kernel       fKernels[27];
-   std::vector<cl::CommandQueue> fQueues;
+   cl::CommandQueue fDefaultQueue;
 
    size_t fNComputeQueues;
 
@@ -93,7 +136,7 @@ public:
    static constexpr size_t localSizeY = 16;
    static constexpr size_t localSize  = localSizeX * localSizeY;
 
-   TOpenCLDevice(size_t nComputeQueues = 1);
+   TOpenCLDevice();
    TOpenCLDevice(const TOpenCLDevice  &)             = default;
    TOpenCLDevice(      TOpenCLDevice &&)             = default;
    TOpenCLDevice & operator=(const TOpenCLDevice  &) = default;
@@ -103,10 +146,15 @@ public:
    inline const char * GetErrorString(cl_int error) const;
    inline void PrintBuildError(cl::Program program) const;
 
-   cl::Context      GetContext()       const {return fContext;}
-   cl::CommandQueue GetQueue(size_t i) const {return fQueues[i];}
-   cl::Device       GetDevice()        const {return fDevice;}
+   cl::Context      GetContext() const {return fContext;}
+   cl::CommandQueue GetQueue()   const {return fDefaultQueue;}
+   cl::Device       GetDevice()  const {return fDevice;}
 
+   /** Variadic function that sets OpenCL kernel arguments. Executes a
+    *  compile-time loop that calls setArg for each of the arguments with
+    *  the corresponding argument index. The executes the kernel on the
+    *  provided command queue and the provided global and local grids,
+    *  \p globalSize and \p localSize. */
    template<typename ...Args>
    inline void EnqueueKernel(EOpenCLKernel kernelEnum,
                              cl::CommandQueue,
@@ -118,8 +166,10 @@ private:
 
    void CompileKernels();
 
-
-   template<
+   /** Helper struct for that implements a compile-time loop over a tuple
+    *  of kernel arguments.*/
+   template
+   <
       typename TupleType,
       int size = std::tuple_size<TupleType>::value,
       int index = 0
@@ -138,7 +188,13 @@ private:
 
 };
 
-inline void TOpenCLDevice::HandleError(cl_int error) const
+//
+// Inline Functions.
+//
+
+//____________________________________________________________________________
+template<typename AFloat, EOpenCLDeviceType AType>
+inline void TOpenCLDevice<AFloat, AType>::HandleError(cl_int error) const
 {
    if (error != CL_SUCCESS) {
       std::cout << "OpenCL Device Error:"
@@ -146,13 +202,18 @@ inline void TOpenCLDevice::HandleError(cl_int error) const
    }
 }
 
-inline void TOpenCLDevice::PrintBuildError(cl::Program program) const
+//____________________________________________________________________________
+template<typename AFloat, EOpenCLDeviceType AType>
+inline void TOpenCLDevice<AFloat, AType>::PrintBuildError(cl::Program program) const
 {
    std::string log = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(fDevice);
    std::cout << log << std::endl;
 }
 
-inline const char * TOpenCLDevice::GetErrorString(cl_int error) const
+//____________________________________________________________________________
+template<typename AFloat, EOpenCLDeviceType AType>
+inline auto TOpenCLDevice<AFloat, AType>::GetErrorString(cl_int error) const
+    -> const char *
 {
    switch(error){
    // run-time and JIT compiler errors
@@ -229,12 +290,15 @@ inline const char * TOpenCLDevice::GetErrorString(cl_int error) const
    }
 }
 
+//____________________________________________________________________________
+template<typename AFloat, EOpenCLDeviceType AType>
 template <class ...Args>
-inline void TOpenCLDevice::EnqueueKernel(EOpenCLKernel kernelEnum,
-                                         cl::CommandQueue queue,
-                                         cl::NDRange global,
-                                         cl::NDRange local,
-                                         Args ...args) const
+inline void TOpenCLDevice<AFloat, AType>::EnqueueKernel(
+    EOpenCLKernel kernelEnum,
+    cl::CommandQueue queue,
+    cl::NDRange global,
+    cl::NDRange local,
+    Args ...args) const
 {
    cl::Kernel kernel = fKernels[static_cast<int>(kernelEnum)];
    auto arguments = std::make_tuple(args...);
