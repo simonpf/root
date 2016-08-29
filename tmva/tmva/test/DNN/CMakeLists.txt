@@ -98,7 +98,7 @@ if (OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)
   INCLUDE_DIRECTORIES(${ROOT_INCLUDE_DIRS} ${OpenCL_INCLUDE_DIR}
     ${clBLAS_DIR}/src ${clRNG_DIR}/src/include)
   LINK_DIRECTORIES(${clBLAS_DIR}/library ${clRNG_DIR}/src/library)
-  SET(DNN_OPENCL_LIBRARIES dnn_opencl clBLAS clRNG ${OpenCL_LIBRARIES})
+  SET(DNN_OPENCL_LIBRARIES dnn_opencl clBLAS clRNG ${OpenCL_LIBRARY})
 
   # DNN - Matrix Arithmetic OpenCL
   LINK_DIRECTORIES(/home/simon/src/clBLAS/library)
