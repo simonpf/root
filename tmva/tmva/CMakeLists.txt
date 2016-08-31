@@ -87,7 +87,7 @@ find_package(OpenCL)
 if (OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)
   include_directories(${ROOT_INCLUDE_DIRS} ${OpenCL_INCLUDE_DIR}
     ${clBLAS_DIR}/src ${clRNG_DIR}/src/include)
-  link_directories(${clRNG_DIR}/lib ${clBLAS_DIR}/src/library)
+  link_directories(${clRNG_DIR}/src/library ${clBLAS_DIR}/library)
   add_library(dnn_opencl ${DNN_OPENCL_FILES} ${OpenCL_LIBRARIES})
   set(DNN_OPENCL_LIBRARIES dnn_opencl clBLAS clRNG ${OpenCL_LIBRARIES})
   set(KERNEL_FILE ${CMAKE_CURRENT_SOURCE_DIR}/src/DNN/Architectures/OpenCL/Kernels.cl)

@@ -17,12 +17,12 @@ if (CUDA_FOUND)
 
   # DNN - Activation Functions Cuda
   CUDA_ADD_EXECUTABLE(testActivationFunctionsCuda TestActivationFunctionsCuda.cxx)
-  TARGET_LINK_LIBRARIES(testActivationFunctionsCuda ${LIBRARIES} ${DNN_CUDA_LIBRARIES})
+  TARGET_LINK_LIBRARIES(testActivationFunctionsCuda ${Libraries} ${DNN_CUDA_LIBRARIES})
   ROOT_ADD_TEST(TMVA-DNN-ActivationFunctionsCuda COMMAND testDerivativesCuda)
 
   # DNN - Loss Functions Cuda
   CUDA_ADD_EXECUTABLE(testLossFunctionsCuda TestLossFunctionsCuda.cxx)
-  TARGET_LINK_LIBRARIES(testLossFunctionsCuda ${LIBRARIES} ${DNN_CUDA_LIBRARIES})
+  TARGET_LINK_LIBRARIES(testLossFunctionsCuda ${Libraries} ${DNN_CUDA_LIBRARIES})
   ROOT_ADD_TEST(TMVA-DNN-LossFunctionsCuda COMMAND testLossFunctionsCuda)
 
   # DNN - Derivatives Cuda
@@ -99,6 +99,11 @@ if (OpenCL_FOUND AND clBLAS_DIR AND clRNG_DIR)
     ${clBLAS_DIR}/src ${clRNG_DIR}/src/include)
   LINK_DIRECTORIES(${clBLAS_DIR}/library ${clRNG_DIR}/src/library)
   SET(DNN_OPENCL_LIBRARIES dnn_opencl clBLAS ${OpenCL_LIBRARY} clRNG)
+
+  # DNN - Matrix Arithmetic OpenCL
+  LINK_DIRECTORIES(/home/simon/src/clBLAS/library)
+  ROOT_EXECUTABLE(listDevicesOpenCL ListDevicesOpenCL.cxx
+                  LIBRARIES ${Libraries} ${DNN_OPENCL_LIBRARIES})
 
   # DNN - Matrix Arithmetic OpenCL
   LINK_DIRECTORIES(/home/simon/src/clBLAS/library)

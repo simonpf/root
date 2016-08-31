@@ -150,9 +150,9 @@ auto TOpenCLDeviceBuffer<AFloat, AType>::GetSubBuffer(
    region.origin = offset * sizeof(AFloat);
    region.size   = size   * sizeof(AFloat);
 
-   buffer.fBuffer = buffer.createSubBuffer(CL_MEM_READ_WRITE,
-                                           CL_BUFFER_CREATE_TYPE_REGION,
-                                           &region);
+   buffer.fBuffer = buffer.fBuffer.createSubBuffer(CL_MEM_READ_WRITE,
+                                                   CL_BUFFER_CREATE_TYPE_REGION,
+                                                   &region);
    return buffer;
 }
 

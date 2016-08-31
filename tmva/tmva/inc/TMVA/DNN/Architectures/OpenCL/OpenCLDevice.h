@@ -22,7 +22,6 @@
 
 #include "Rtypes.h"
 #include "CL/cl.hpp"
-#include <tbb/mutex.h>
 #include <vector>
 #include <tuple>
 #include <iostream>
@@ -32,9 +31,10 @@ namespace DNN  {
 
 /** Enum class represting OpenCL device types. */
 enum class EOpenCLDeviceType : int {
-    kAccelerator = 0,
-    kCpu         = 1,
-    kGpu         = 2
+    kAccelerator = CL_DEVICE_TYPE_ACCELERATOR,
+    kCpu         = CL_DEVICE_TYPE_CPU,
+    kDefault     = CL_DEVICE_TYPE_DEFAULT,
+    kGpu         = CL_DEVICE_TYPE_GPU
 };
 
 /** Enum class representing the OpenCL kernels requires
