@@ -200,6 +200,8 @@ TDataLoader<Data_t, AArchitecture>::TDataLoader(
    size_t inputMatrixSize  = fBatchSize * fNInputFeatures;
    size_t outputMatrixSize = fBatchSize * fNOutputFeatures;
 
+   fHostBuffers.reserve(nStreams);
+   fDeviceBuffers.reserve(nStreams);
    for (size_t i = 0; i < fNStreams; i++)
    {
       fHostBuffers.push_back(HostBuffer_t(inputMatrixSize + outputMatrixSize));

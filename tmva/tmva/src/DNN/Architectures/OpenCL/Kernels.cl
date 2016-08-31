@@ -513,7 +513,7 @@ __kernel void AddL2RegularizationGradients(__global AFloat * B,
 
 //____________________________________________________________________________
 __kernel void Dropout(__global AFloat * B,
-                      __global clrngLfsr113Stream * streams,
+                      __global clrngLfsr113HostStream * streams,
                       int m, AFloat dropoutProbability)
 {
    int globalIndexX = get_global_id(0);

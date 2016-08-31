@@ -157,7 +157,7 @@ public:
       return fElementBuffer.GetDevice();
    }
 
-   void SetComputeQueue(cl::CommandQueue queue)
+   void SetComputeQueue(cl::CommandQueue queue) const
    {
       fElementBuffer.SetComputeQueue(queue);
    }

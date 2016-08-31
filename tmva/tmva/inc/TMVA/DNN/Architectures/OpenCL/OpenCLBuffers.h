@@ -151,9 +151,9 @@ public:
    void CopyFrom(const TOpenCLHostBuffer<AFloat, AType> &) const;
    void   CopyTo(const TOpenCLHostBuffer<AFloat, AType> &) const;
 
-   TOpenCLDevice<AFloat, AType> &  GetDevice() const {return * fDevice;}
-   cl::CommandQueue GetComputeQueue()          const {return fComputeQueue;}
-   void SetComputeQueue(cl::CommandQueue queue)      {fComputeQueue = queue;}
+   TOpenCLDevice<AFloat, AType> &  GetDevice()  const {return * fDevice;}
+   cl::CommandQueue GetComputeQueue()           const {return fComputeQueue;}
+   void SetComputeQueue(cl::CommandQueue queue) const {fComputeQueue = queue;}
 
 };
 

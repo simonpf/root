@@ -80,7 +80,7 @@ void TOpenCLDevice<AFloat, AType>::CompileKernels()
    std::vector<cl::Device> devices(1);
    devices[0] = fDevice;
    cl::Program program(fContext, source, false);
-   std::string arguments("-cl-nv-verbose -I " STRINGIFY(__KERNEL_INCLUDE_DIRS__));
+   std::string arguments(" -I" STRINGIFY(__KERNEL_INCLUDE_DIRS__));
    ((arguments += " -DAFloat=") += TypeName<AFloat>::value) += " ";
 
    try {

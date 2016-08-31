@@ -27,7 +27,7 @@ inline AFloat ExecuteLossFunctionsKernel(
     const TOpenCLMatrix<AFloat, AType> & output)
 {
    const TOpenCLDevice<AFloat, AType> & device = Y.GetDevice();
-   cl::CommandQueue                     queue  = Y.GetComputeQueue();
+   cl::CommandQueue                     queue  = output.GetComputeQueue();
 
    try {
       int m     = (int) Y.GetNrows();
@@ -72,7 +72,7 @@ AFloat TOpenCL<AFloat, AType>::MeanSquaredError(
 //____________________________________________________________________________
 template<typename AFloat, EOpenCLDeviceType AType>
 void TOpenCL<AFloat, AType>::MeanSquaredErrorGradients(
-          TOpenCLMatrix<AFloat, AType> &dY,
+          TOpenCLMatrix<AFloat, AType> & dY,
     const TOpenCLMatrix<AFloat, AType> & Y,
     const TOpenCLMatrix<AFloat, AType> & output)
 {
@@ -84,7 +84,7 @@ void TOpenCL<AFloat, AType>::MeanSquaredErrorGradients(
    cl::NDRange global(static_cast<size_t>(n),
                       TOpenCLDevice<AFloat, AType>::localSize);
    cl::NDRange local(1, TOpenCLDevice<AFloat, AType>::localSize);
-   cl::CommandQueue queue = Y.GetComputeQueue();
+   cl::CommandQueue queue = output.GetComputeQueue();
    device.EnqueueKernel(EOpenCLKernel::kMeanSquaredErrorGradients,
                         queue, global, local,
                         dY.GetElementBuffer(), Y.GetElementBuffer(),
@@ -104,7 +104,7 @@ AFloat TOpenCL<AFloat, AType>::CrossEntropy(
 //____________________________________________________________________________
 template<typename AFloat, EOpenCLDeviceType AType>
 void TOpenCL<AFloat, AType>::CrossEntropyGradients(
-          TOpenCLMatrix<AFloat, AType> &dY,
+          TOpenCLMatrix<AFloat, AType> & dY,
     const TOpenCLMatrix<AFloat, AType> & Y,
     const TOpenCLMatrix<AFloat, AType> & output)
 {
@@ -116,7 +116,7 @@ void TOpenCL<AFloat, AType>::CrossEntropyGradients(
    cl::NDRange global(static_cast<size_t>(n),
                       TOpenCLDevice<AFloat, AType>::localSize);
    cl::NDRange local(1, TOpenCLDevice<AFloat, AType>::localSize);
-   cl::CommandQueue queue = Y.GetComputeQueue();
+   cl::CommandQueue queue = output.GetComputeQueue();
    device.EnqueueKernel(EOpenCLKernel::kCrossEntropyGradients,
                         queue, global, local,
                         dY.GetElementBuffer(), Y.GetElementBuffer(),

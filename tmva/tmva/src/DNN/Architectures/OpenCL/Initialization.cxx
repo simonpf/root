@@ -62,6 +62,7 @@ void TOpenCL<AFloat, AType>::InitializeUniform(TOpenCLMatrix<AFloat, AType> & A)
       }
    }
    A = B;
+   A.GetComputeQueue().finish();
 }
 
 //______________________________________________________________________________
@@ -83,6 +84,7 @@ void TOpenCL<AFloat, AType>::InitializeIdentity(TOpenCLMatrix<AFloat, AType> & A
       }
    }
    A = B;
+   A.GetComputeQueue().finish();
 }
 
 //______________________________________________________________________________
@@ -100,6 +102,7 @@ void TOpenCL<AFloat, AType>::InitializeZero(TOpenCLMatrix<AFloat, AType> & A)
       }
    }
    A = B;
+   A.GetComputeQueue().finish();
 }
 
 } // namespace DNN

@@ -44,6 +44,7 @@ void TOpenCL<AFloat, AType>::MultiplyTranspose(
                 C.GetElementBuffer()(), 0, m,
                 1, &queue, 0, NULL, &event);
    A.GetDevice().HandleError(error);
+   B.SetComputeQueue(A.GetComputeQueue());
    C.SetComputeQueue(A.GetComputeQueue());
 }
 
@@ -66,6 +67,7 @@ void TOpenCL<AFloat, AType>::AddRowWise(
    device.EnqueueKernel(EOpenCLKernel::kAddRowWise, queue,
                         global, local, B.GetElementBuffer(),
                         A.GetElementBuffer(), m);
+   A.SetComputeQueue(B.GetComputeQueue());
 }
 
 //____________________________________________________________________________

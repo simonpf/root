@@ -142,19 +142,17 @@ auto TOpenCLDeviceBuffer<AFloat, AType>::GetSubBuffer(
     size_t size)
     -> TOpenCLDeviceBuffer
 {
-   TOpenCLDeviceBuffer buffer;
+   TOpenCLDeviceBuffer buffer = *this;
    buffer.fSize         = size;
-   buffer.fOffset       = fOffset;
-   buffer.fDevice       = fDevice;
-   buffer.fComputeQueue = fComputeQueue;
+   buffer.fOffset       = 0;
 
    _cl_buffer_region region;
    region.origin = offset * sizeof(AFloat);
    region.size   = size   * sizeof(AFloat);
 
-   buffer.fBuffer = fBuffer.createSubBuffer(CL_MEM_READ_WRITE,
-                                            CL_BUFFER_CREATE_TYPE_REGION,
-                                            &region);
+   buffer.fBuffer = buffer.createSubBuffer(CL_MEM_READ_WRITE,
+                                           CL_BUFFER_CREATE_TYPE_REGION,
+                                           &region);
    return buffer;
 }
 
@@ -165,10 +163,9 @@ void TOpenCLDeviceBuffer<AFloat, AType>::CopyFrom(
     ) const
 {
    try {
-       fComputeQueue = buffer.GetComputeQueue();
+      fComputeQueue = buffer.GetComputeQueue();
+      fComputeQueue.finish();
       void * temp = (void *) buffer.GetDataPointer();
-//       fComputeQueue.enqueueCopyBuffer(buffer, fBuffer, 0, 0,
-//                                       fSize * sizeof(AFloat));
       fComputeQueue.enqueueWriteBuffer(fBuffer, CL_FALSE, 0,
                                        fSize * sizeof(AFloat),
                                        buffer.GetDataPointer());
@@ -187,12 +184,12 @@ void TOpenCLDeviceBuffer<AFloat, AType>::CopyTo(
    try {
       void * temp = (void *) buffer.GetDataPointer();
       fComputeQueue.enqueueReadBuffer(fBuffer, CL_TRUE, 0,
-                                      fSize * sizeof(AFloat),
-                                      buffer.GetDataPointer());
+                                      fSize * sizeof(AFloat), temp);
    } catch(cl::Error error) {
       fDevice->HandleError(error.err());
    }
    fComputeQueue.flush();
+   fComputeQueue.finish();
 }
 
 //______________________________________________________________________________
