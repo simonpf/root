@@ -1022,7 +1022,8 @@ void TMVA::MethodDNN::TrainCpu()
             for (auto batch : testData) {
                auto inputMatrix  = batch.GetInput();
                auto outputMatrix = batch.GetOutput();
-               testError += testNet.Loss(inputMatrix, outputMatrix);
+               auto weightMatrix = batch.GetWeights();
+               testError += testNet.Loss(inputMatrix, outputMatrix, weightMatrix);
             }
             testError /= (Double_t) (nTestSamples / settings.batchSize);
 
@@ -1033,7 +1034,8 @@ void TMVA::MethodDNN::TrainCpu()
             for (auto batch : trainingData) {
                auto inputMatrix  = batch.GetInput();
                auto outputMatrix = batch.GetOutput();
-               trainingError += net.Loss(inputMatrix, outputMatrix);
+               auto weightMatrix = batch.GetWeights();
+               trainingError += net.Loss(inputMatrix, outputMatrix, weightMatrix);
             }
             trainingError /= (Double_t) (nTrainingSamples / settings.batchSize);
 
