@@ -181,6 +181,20 @@ void TDataLoader<MatrixInput_t, TCuda<float>>::CopyOutput(
 }
 
 //______________________________________________________________________________
+    template<>
+    void TDataLoader<MatrixInput_t, TCuda<float>>::CopyWeights(
+        TCudaHostBuffer<float> & buffer,
+        IndexIterator_t sampleIterator,
+        size_t batchSize)
+    {
+        const TMatrixT<Double_t> &weightMatrix  = std::get<2>(fData);
+        for (size_t i = 0; i < batchSize; i++) {
+            buffer[i] = static_cast<float>(weightMatrix(*sampleIterator,0)):
+            sampleIterator++;
+        }
+    }
+
+//______________________________________________________________________________
 template<>
 void TDataLoader<TMVAInput_t, TCuda<float>>::CopyInput(
     TCudaHostBuffer<float> & buffer,
@@ -241,6 +255,22 @@ void TDataLoader<TMVAInput_t, TCuda<float>>::CopyOutput(
 
 //______________________________________________________________________________
 template<>
+void TDataLoader<TMVAInpu_t, TCuda<float>>::CopyWeights(
+    TCudaHostBuffer<float> & buffer,
+    IndexIterator_t sampleIterator,
+    size_t batchSize)
+{
+    Event * event  = fData.front();
+
+    for (size_t i = 0; i < batchSize; i++) {
+        size_t sampleIndex = * sampleIterator++;
+        event = fData[sampleIndex];
+        buffer[i] = static_cast<float>(event->GetWeight());
+    }
+}
+
+//______________________________________________________________________________
+template<>
 void TDataLoader<MatrixInput_t, TCuda<double>>::CopyInput(
     TCudaHostBuffer<double> & buffer,
     IndexIterator_t sampleIterator,
@@ -277,6 +307,20 @@ void TDataLoader<MatrixInput_t, TCuda<double>>::CopyOutput(
       }
       sampleIterator++;
    }
+}
+
+//______________________________________________________________________________
+template<>
+void TDataLoader<MatrixInput_t, TCuda<double>>::CopyWeights(
+    TCudaHostBuffer<float> & buffer,
+    IndexIterator_t sampleIterator,
+    size_t batchSize)
+{
+    const TMatrixT<Double_t> &weightMatrix  = std::get<2>(fData);
+    for (size_t i = 0; i < batchSize; i++) {
+        buffer[i] = static_cast<double>(weightMatrix(*sampleIterator,0)):
+            sampleIterator++;
+    }
 }
 
 //______________________________________________________________________________
@@ -337,6 +381,29 @@ void TDataLoader<TMVAInput_t, TCuda<double>>::CopyOutput(
       }
    }
 }
+
+//______________________________________________________________________________
+    template<>
+    void TDataLoader<TMVAInput_t, TCuda<float>>::CopyOutput(
+        TCudaHostBuffer<float> & buffer,
+        IndexIterator_t sampleIterator,
+        size_t batchSize)
+    {
+        Event * event  = fData.front();
+        size_t n  = event->GetNVariables();
+
+        // Copy input variables.
+
+        for (size_t i = 0; i < batchSize; i++) {
+            size_t sampleIndex = * sampleIterator++;
+            event = fData[sampleIndex];
+            for (size_t j = 0; j < n; j++) {
+                size_t bufferIndex = j * batchSize + i;
+                buffer[bufferIndex] = static_cast<float>(event->GetValue(j));
+            }
+        }
+    }
+
 
 // Explicit Instantiations.
 
