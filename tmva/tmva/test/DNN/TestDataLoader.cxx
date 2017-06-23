@@ -20,7 +20,7 @@ using namespace TMVA::DNN;
 
 int main ()
 {
-   Double_t error = testIdentity<TReference<Double_t>>();
+   Double_t error = testSum<TReference<Double_t>>();
    std::cout << "Testing reference data loader: Mex. rel. error = " << error;
    std::cout << std::endl;
 }

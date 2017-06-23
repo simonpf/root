@@ -46,13 +46,18 @@ auto testSum()
    Matrix_t XArch(X), Sum(1,1), SumTotal(1,1);
    Scalar_t sum = 0.0, sumTotal = 0.0;
 
+   Int_t i = 0;
    for (auto b : loader) {
       Architecture_t::SumColumns(Sum, b.GetInput());
+      sum += Sum(0, 0);
+      Architecture_t::SumColumns(Sum, b.GetOutput());
+      sum += Sum(0, 0);
+      Architecture_t::SumColumns(Sum, b.GetWeights());
       sum += Sum(0, 0);
    }
 
    Architecture_t::SumColumns(SumTotal, XArch);
-   sumTotal = SumTotal(0,0);
+   sumTotal = 3.0 * SumTotal(0,0);
 
    return fabs(sumTotal - sum) / sumTotal;
 }
@@ -71,7 +76,7 @@ auto testIdentity()
 
    TMatrixT<Double_t> X(2000, 100), W(2000, 1);
    randomMatrix(X);
-   fillMatrix(W, 1.0);
+   randomMatrix(W);
    MatrixInput_t input(X, X, W);
    DataLoader_t loader(input, 2000, 20, 100, 100);
 
