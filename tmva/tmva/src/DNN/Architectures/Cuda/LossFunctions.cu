@@ -27,7 +27,7 @@ namespace DNN
 template<typename AFloat>
 AFloat TCuda<AFloat>::MeanSquaredError(const TCudaMatrix<AFloat> & Y,
                                        const TCudaMatrix<AFloat> & output,
-                                       const TCudaMatrix<AFloat> &weights);
+                                       const TCudaMatrix<AFloat> & weights)
 {
     dim3 blockDims = TDevice::BlockDims2D();
     dim3 gridDims  = TDevice::GridDims2D(Y);
@@ -48,7 +48,7 @@ template<typename AFloat>
 void TCuda<AFloat>::MeanSquaredErrorGradients(TCudaMatrix<AFloat> & dY,
                                               const TCudaMatrix<AFloat> & Y,
                                               const TCudaMatrix<AFloat> & output,
-                                              const TCudaMatrix<AFloat> &weights);
+                                              const TCudaMatrix<AFloat> &weights)
 {
    dim3 blockDims = TDevice::BlockDims2D();
    dim3 gridDims  = TDevice::GridDims2D(Y);
@@ -67,7 +67,7 @@ void TCuda<AFloat>::MeanSquaredErrorGradients(TCudaMatrix<AFloat> & dY,
 template<typename AFloat>
 AFloat TCuda<AFloat>::CrossEntropy(const TCudaMatrix<AFloat> & Y,
                                    const TCudaMatrix<AFloat> & output,
-                                   const TCudaMatrix<AFloat> &weights);
+                                   const TCudaMatrix<AFloat> &weights)
 {
    dim3 blockDims = TDevice::BlockDims2D();
    dim3 gridDims  = TDevice::GridDims2D(Y);
@@ -88,7 +88,7 @@ template<typename AFloat>
 void TCuda<AFloat>::CrossEntropyGradients(TCudaMatrix<AFloat> & dY,
                                           const TCudaMatrix<AFloat> & Y,
                                           const TCudaMatrix<AFloat> & output,
-                                          const TCudaMatrix<AFloat> &weights);
+                                          const TCudaMatrix<AFloat> &weights)
 {
    dim3 blockDims = TDevice::BlockDims2D();
    dim3 gridDims  = TDevice::GridDims2D(Y);
@@ -107,7 +107,7 @@ void TCuda<AFloat>::CrossEntropyGradients(TCudaMatrix<AFloat> & dY,
 template<typename AFloat>
 AFloat TCuda<AFloat>::SoftmaxCrossEntropy(const TCudaMatrix<AFloat> & Y,
                                           const TCudaMatrix<AFloat> & output,
-                                          const TCudaMatrix<AFloat> &weights);
+                                          const TCudaMatrix<AFloat> &weights)
 {
    dim3 blockDims = TDevice::BlockDims1D();
    dim3 gridDims  = TDevice::GridDims1D(Y);
@@ -128,7 +128,7 @@ template<typename AFloat>
 void TCuda<AFloat>::SoftmaxCrossEntropyGradients(TCudaMatrix<AFloat> & dY,
                                                  const TCudaMatrix<AFloat> & Y,
                                                  const TCudaMatrix<AFloat> & output,
-                                                 const TCudaMatrix<AFloat> &weights);
+                                                 const TCudaMatrix<AFloat> &weights)
 {
    dim3 blockDims = TDevice::BlockDims1D();
    dim3 gridDims  = TDevice::GridDims1D(Y);

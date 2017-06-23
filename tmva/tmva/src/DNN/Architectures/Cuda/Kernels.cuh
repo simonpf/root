@@ -679,7 +679,7 @@ __global__ void SoftmaxCrossEntropyGradients(AFloat * dY,
       }
       for (int j = 0; j < n; j++) {
          dY[i + j * m] =  sumY * exp(output[i + j * m]) / sum - Y[i + j * m];
-         dY[i + j * m] *=  -weights[i] * norm
+         dY[i + j * m] *=  -weights[i] * norm;
       }
    }
 }
