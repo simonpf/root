@@ -120,7 +120,7 @@ int TMVAClassification( TString myMethodList = "" )
    Use["CFMlpANN"]        = 0; // Depreciated ANN from ALEPH
    Use["TMlpANN"]         = 0; // ROOT's own ANN
    Use["DNN_GPU"]         = 0; // CUDA-accelerated DNN training.
-   Use["DNN_CPU"]         = 0; // Multi-core accelerated DNN.
+   Use["DNN_CPU"]         = 1; // Multi-core accelerated DNN.
    //
    // Support Vector Machine
    Use["SVM"]             = 1;
