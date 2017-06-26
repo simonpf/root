@@ -105,9 +105,9 @@ auto testMeanSquaredErrorGradients(size_t ntests)
       };
       zipWithMatrix(ZRef, normedDifference, X, Y);
 
-      for (size_t i = 0; i < m; i++) {
-         for (size_t j = 0; j < n; j++) {
-            ZRef(i,j) *= W(i,0);
+      for (size_t j = 0; j < m; j++) {
+         for (size_t k = 0; k < n; k++) {
+            ZRef(j,k) *= W(j,0);
          }
       }
 
@@ -156,9 +156,9 @@ auto testCrossEntropy(size_t ntests)
             return y * std::log(sig) + (1 - y) * std::log(1 - sig);
       };
       zipWithMatrix(Z, crossCorrelation, X, Y);
-      for (size_t i = 0; i < m; i++) {
-         for (size_t j = 0; j < n; j++) {
-            Z(i,j) *= W(i,0);
+      for (size_t j = 0; j < m; j++) {
+         for (size_t k = 0; k < n; k++) {
+            Z(j,k) *= W(j,0);
          }
       }
 
@@ -210,9 +210,9 @@ auto testCrossEntropyGradients(size_t ntests)
          return (sig - y) * norm;};
       zipWithMatrix(ZRef, crossCorrelationGradient, X, Y);
 
-      for (size_t i = 0; i < m; i++) {
-         for (size_t j = 0; j < n; j++) {
-            ZRef(i,j) *= W(i,0);
+      for (size_t j = 0; j < m; j++) {
+         for (size_t k = 0; k < n; k++) {
+            ZRef(j,k) *= W(j,0);
          }
       }
 
