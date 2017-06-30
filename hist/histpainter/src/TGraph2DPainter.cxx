@@ -29,7 +29,7 @@
 R__EXTERN TH1  *gCurrentHist;
 R__EXTERN Hoption_t Hoption;
 
-ClassImp(TGraph2DPainter)
+ClassImp(TGraph2DPainter);
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -365,7 +365,7 @@ TList *TGraph2DPainter::GetContourList(Double_t contour)
       }
    }
 
-   Bool_t *segUsed = new Bool_t[fNdt];
+   Int_t *segUsed = new Int_t[fNdt];
    for(i=0; i<fNdt; i++) segUsed[i]=kFALSE;
 
    // Find all the graphs making the contour. There is two kind of graphs,

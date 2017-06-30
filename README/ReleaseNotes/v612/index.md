@@ -47,24 +47,21 @@ The following interfaces have been removed, after deprecation in v6.10.
 
 ## Core Libraries
 
-### `TObjString` to `TString`
 
-`TObjString::GetString()` now returns a `const TString&` to the `TString` inside the `TObjString`, instead of copying it.
-This is to prevent very common misunderstanding of the interface.
+## I/O Libraries
 
-In several cases, the misunderstanding of the interface caused invalid memory accesses to the already destructed
-temporary `TString` returned by `GetString()`, e.g. `objStr->GetString().Data()`. This will be fixed automatically by the
-new return type.
+- Introduce TKey::ReadObject<typeName>.  This is a user friendly wrapper around ReadObjectAny.  For example
+```{.cpp}
+auto h1 = key->ReadObject<TH1>
+```
+after which h1 will either be null if the key contains something that is not a TH1 (or derived class)
+or will be set to the address of the histogram read from the file.
 
-In rare cases, the caller expected `GetString()` to return a (non-const) reference to the embedded `TString`, e.g.
-`objString->GetString().ReplaceAll("a", "b"); // WRONG!` This will now fail to compile, instead of not doing what the author of the
-code expected. Please fix that code by using the `TObjString::String()` interface, which returns a non-const `TString&`:
-`objString->String().ReplaceAll("a", "b");`.
+## TTree Libraries
 
-In extremely rare cases, this change breaks a valid use where the temporary `TString` was modified and then captured in a new `TString`
-object before the destruction of the temporary: `TString str = objStr->GetString().ReplaceAll("a", "b");`. In these rare cases,
-please use the new function `CopyString()` which clearly indicates that it involves a temporary.
-
+- Resolved O(N^2) scaling problem in ```TTree::Draw()``` observed when a branch that contains a
+large TClonesArray where each element contains another small vector container.
+- `TTree::Draw()` now creates double precision histograms (TH1D, TH2D, TH3D) by default (instead of TH1F etc); this can be configured in etc/system.rootrc / .rootrc as `Hist.Precision.1D` (or `2D` or `3D`).
 
 ## Histogram Libraries
 
@@ -73,9 +70,6 @@ please use the new function `CopyString()` which clearly indicates that it invol
 
 
 ## RooFit Libraries
-
-
-## TTree Libraries
 
 
 ## 2D Graphics Libraries
@@ -87,14 +81,14 @@ please use the new function `CopyString()` which clearly indicates that it invol
     -  LogZ for violins
     -  scaling of candles and violins with respect to each other
     -  static functions for WhiskerRange and BoxRange
+  - In some case it was not somme possible to zoom a 1D histogram using the mouse
+    on the X axis. This was described
+    [here](https://root-forum.cern.ch/t/axis-blocked-when-overlaying-two-histograms/25326)
 
 ## 3D Graphics Libraries
 
 
 ## Geometry Libraries
-
-
-## I/O Libraries
 
 
 ## Database Libraries

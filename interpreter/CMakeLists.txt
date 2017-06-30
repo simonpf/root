@@ -2,9 +2,15 @@
 #---Define the way we want to build and what of llvm/clang/cling------------------------------------
 set(LLVM_ENABLE_WARNINGS OFF CACHE BOOL "")
 set(LLVM_INCLUDE_TESTS OFF CACHE BOOL "")
+set(CLANG_INCLUDE_TESTS OFF CACHE BOOL "")
 set(LLVM_INCLUDE_EXAMPLES OFF CACHE BOOL "")
+set(CLANG_BUILD_TOOLS OFF CACHE BOOL "")
 set(LLVM_BUILD_TOOLS OFF CACHE BOOL "")
+set(LLVM_TOOL_LLVM_AR_BUILD OFF CACHE BOOL "")
+set(CLANG_TOOL_CLANG_OFFLOAD_BUNDLER_BUILD OFF CACHE BOOL "")
 set(LLVM_FORCE_USE_OLD_TOOLCHAIN ON CACHE BOOL "")
+set(LLVM_EXTERNAL_CLING_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cling" CACHE STRING "")
+set(LLVM_EXTERNAL_PROJECTS "cling" CACHE STRING "")
 # We only use llvm/clang through TCling which is (with the help of core/meta) already taking a lock
 # to serialize access to llvm.  We can later review how to make this finer grained by using llvm's own locking
 # mechanism.
@@ -35,9 +41,13 @@ endif()
 
 set(LLVM_TARGETS_TO_BUILD ${ROOT_CLING_TARGET} CACHE STRING "Semicolon-separated list of targets to build, or \"all\".")
 
-#---Build LLVM/Clang with symbol visibility=hidden--------------------------------------------------
-if(NOT CLING_INCLUDE_TESTS)
+if(clingtest)
+  message("-- cling test suite enabled: llvm / clang symbols in libCling will be visible!")
+  set(CLING_INCLUDE_TESTS ON CACHE BOOL "")
+else()
+  #---Build LLVM/Clang with symbol visibility=hidden--------------------------------------------------
   ROOT_ADD_CXX_FLAG(CMAKE_CXX_FLAGS -fvisibility=hidden)
+  set(CLANG_ENABLE_COMPILER OFF CACHE BOOL "")
 endif()
 
 #--- Build LLVM/Clang with modules -----------------------------------------------------------------
@@ -81,9 +91,6 @@ set(LLVM_NOCLING "YES")
 set(CLANG_ENABLE_STATIC_ANALYZER OFF CACHE BOOL "")
 set(CLANG_ENABLE_ARCMT OFF CACHE BOOL "")
 set(CLANG_ENABLE_FORMAT OFF CACHE BOOL "")
-if(NOT CLING_INCLUDE_TESTS)
-  set(CLANG_ENABLE_COMPILER OFF CACHE BOOL "")
-endif()
 
 #---Remove the inherited include_directories()
 set_directory_properties(PROPERTIES INCLUDE_DIRECTORIES "")
@@ -118,7 +125,7 @@ mark_as_advanced(CLEAR LLVM_ENABLE_ASSERTIONS LLVM_BUILD_TYPE)
 set(llvmconfigfile "${CMAKE_CURRENT_SOURCE_DIR}/llvm/src/CMakeLists.txt")
 file(READ ${llvmconfigfile} _filestr)
 foreach(versionpart LLVM_VERSION_MAJOR LLVM_VERSION_MINOR LLVM_VERSION_PATCH)
-  if(${_filestr} MATCHES "set[(](${versionpart}[^)]+)")
+  if("${_filestr}" MATCHES "set[(](${versionpart}[^)]+)")
     string(REGEX REPLACE " *${versionpart} ([^)]+).*" "\\1" ${versionpart} "${CMAKE_MATCH_1}")
   else()
     MESSAGE(FATAL_ERROR "Cannot extract LLVM version number (${versionpart}) from ${llvmconfigfile}")

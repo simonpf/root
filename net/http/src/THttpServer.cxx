@@ -22,6 +22,7 @@
 #include "TFolder.h"
 #include "RVersion.h"
 #include "RConfigure.h"
+#include "TRegexp.h"
 
 #include "THttpEngine.h"
 #include "TRootSniffer.h"
@@ -33,6 +34,8 @@
 #include <string.h>
 #include <fstream>
 
+////////////////////////////////////////////////////////////////////////////////
+
 //////////////////////////////////////////////////////////////////////////
 //                                                                      //
 // THttpTimer                                                           //
@@ -41,8 +44,6 @@
 // Provides regular call of THttpServer::ProcessRequests() method       //
 //                                                                      //
 //////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 
 class THttpTimer : public TTimer {
 public:
@@ -66,6 +67,15 @@ public:
 };
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////
+//                                                                      //
+// TLongPollEngine                                                      //
+//                                                                      //
+// Emulation of websocket with long poll requests                       //
+// Allows to send data from server to client without explicit request   //
+//                                                                      //
+//////////////////////////////////////////////////////////////////////////
 
 class TLongPollEngine : public THttpWSEngine {
 protected:
@@ -149,6 +159,8 @@ public:
 
 // =======================================================
 
+ClassImp(THttpServer)
+
 //////////////////////////////////////////////////////////////////////////
 //                                                                      //
 // THttpServer                                                          //
@@ -186,29 +198,31 @@ public:
 // enable monitoring flag in the browser - than objects view            //
 // will be regularly updated.                                           //
 //                                                                      //
-// More information: http://root.cern.ch/drupal/content/users-guide     //
+// More information: https://root.cern/root/htmldoc/guides/HttpServer/HttpServer.html  //
 //                                                                      //
 //////////////////////////////////////////////////////////////////////////
 
-ClassImp(THttpServer)
 
-   ////////////////////////////////////////////////////////////////////////////////
-   /// constructor
-   ///
-   /// As argument, one specifies engine kind which should be
-   /// created like "http:8080". One could specify several engines
-   /// at once, separating them with ; like "http:8080;fastcgi:9000"
-   /// One also can configure readonly flag for sniffer like
-   /// "http:8080;readonly" or "http:8080;readwrite"
-   ///
-   /// Also searches for JavaScript ROOT sources, which are used in web clients
-   /// Typically JSROOT sources located in $ROOTSYS/etc/http directory,
-   /// but one could set JSROOTSYS variable to specify alternative location
+////////////////////////////////////////////////////////////////////////////////
+/// constructor
+///
+/// As argument, one specifies engine kind which should be
+/// created like "http:8080". One could specify several engines
+/// at once, separating them with ; like "http:8080;fastcgi:9000"
+/// One also can configure readonly flag for sniffer like
+/// "http:8080;readonly" or "http:8080;readwrite"
+/// CORS (cross-origine resource sharing) for response of ProcessRequest()
+/// can be set in the options like "http:8088s?cors" for all origins ("*")
+/// or like "http:8088s?cors=domain" for a specific domain.
+///
+/// Also searches for JavaScript ROOT sources, which are used in web clients
+/// Typically JSROOT sources located in $ROOTSYS/etc/http directory,
+/// but one could set JSROOTSYS shell variable to specify alternative location
 
-   THttpServer::THttpServer(const char *engine)
-   : TNamed("http", "ROOT http server"), fEngines(), fTimer(0), fSniffer(0), fMainThrdId(0), fJSROOTSYS(),
-     fTopName("ROOT"), fJSROOT(), fLocations(), fDefaultPage(), fDefaultPageCont(), fDrawPage(), fDrawPageCont(),
-     fCallArgs()
+THttpServer::THttpServer(const char *engine) : TNamed("http", "ROOT http server"),
+   fEngines(), fTimer(0), fSniffer(0), fMainThrdId(0), fJSROOTSYS(),
+   fTopName("ROOT"), fJSROOT(), fLocations(), fDefaultPage(), fDefaultPageCont(),
+   fDrawPage(), fDrawPageCont(), fCallArgs()
 {
    fLocations.SetOwner(kTRUE);
 
@@ -254,11 +268,25 @@ ClassImp(THttpServer)
             GetSniffer()->SetReadOnly(kTRUE);
          } else if ((strcmp(opt, "readwrite") == 0) || (strcmp(opt, "rw") == 0)) {
             GetSniffer()->SetReadOnly(kFALSE);
+         } else if (strcmp(opt, "global") == 0) {
+            GetSniffer()->SetScanGlobalDir(kTRUE);
+         } else if (strcmp(opt, "noglobal") == 0) {
+            GetSniffer()->SetScanGlobalDir(kFALSE);
          } else
             CreateEngine(opt);
       }
 
       delete lst;
+   }
+
+   // CORS
+   if (TString(engine).Index("cors") != kNPOS) {
+      TString engine_s = TString(engine);
+      if (engine_s.Index("cors=") == kNPOS) {
+         SetCors("*");
+      } else {
+         SetCors(TString(engine_s("[^&]*", engine_s.Index("cors=") + 5)));
+      }
    }
 }
 
@@ -617,7 +645,7 @@ void THttpServer::ProcessRequest(THttpCallArg *arg)
          Int_t len = 0;
          char *buf = ReadFileContent(fDefaultPage.Data(), len);
          if (len > 0) fDefaultPageCont.Append(buf, len);
-         delete buf;
+         free(buf);
       }
 
       if (fDefaultPageCont.Length() == 0) {
@@ -658,7 +686,7 @@ void THttpServer::ProcessRequest(THttpCallArg *arg)
          Int_t len = 0;
          char *buf = ReadFileContent(fDrawPage.Data(), len);
          if (len > 0) fDrawPageCont.Append(buf, len);
-         delete buf;
+         free(buf);
       }
 
       if (fDrawPageCont.Length() == 0) {
@@ -840,6 +868,10 @@ void THttpServer::ProcessRequest(THttpCallArg *arg)
    // try to avoid caching on the browser
    arg->AddHeader("Cache-Control",
                   "private, no-cache, no-store, must-revalidate, max-age=0, proxy-revalidate, s-maxage=0");
+
+   // potentially add cors header
+   if (IsCors()) arg->AddHeader("Access-Control-Allow-Origin", GetCors());
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////

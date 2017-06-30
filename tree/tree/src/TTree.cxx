@@ -419,7 +419,7 @@ constexpr Float_t kNEntriesResortInv = 1.f/kNEntriesResort;
 Int_t    TTree::fgBranchStyle = 1;  // Use new TBranch style with TBranchElement.
 Long64_t TTree::fgMaxTreeSize = 100000000000LL;
 
-ClassImp(TTree)
+ClassImp(TTree);
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -726,7 +726,8 @@ TTree::TTree()
 /// In this case, it creates automatically branches following the folder hierarchy.
 /// splitlevel may be used in this case to control the split level.
 
-TTree::TTree(const char* name, const char* title, Int_t splitlevel /* = 99 */)
+TTree::TTree(const char* name, const char* title, Int_t splitlevel /* = 99 */,
+             TDirectory* dir /* = gDirectory*/)
 : TNamed(name, title)
 , TAttLine()
 , TAttFill()
@@ -763,7 +764,7 @@ TTree::TTree(const char* name, const char* title, Int_t splitlevel /* = 99 */)
 , fMakeClass(0)
 , fFileNumber(0)
 , fNotify(0)
-, fDirectory(0)
+, fDirectory(dir)
 , fBranches()
 , fLeaves()
 , fAliases(0)
@@ -809,7 +810,6 @@ TTree::TTree(const char* name, const char* title, Int_t splitlevel /* = 99 */)
    // FIXME: This is very annoying behaviour, we should
    //        be able to choose to not do this like we
    //        can with a histogram.
-   fDirectory = gDirectory;
    if (fDirectory) fDirectory->Append(this);
 
    fBranches.SetOwner(kTRUE);
@@ -8487,21 +8487,24 @@ Long64_t TTree::SetEntries(Long64_t n)
    }
 
    // case 2; compute the number of entries from the number of entries in the branches
-   TBranch* b = 0;
-   Long64_t nMin = 99999999;
+   TBranch* b(nullptr), *bMin(nullptr), *bMax(nullptr);
+   Long64_t nMin = kMaxEntries;
    Long64_t nMax = 0;
    TIter next(GetListOfBranches());
    while((b = (TBranch*) next())){
       Long64_t n2 = b->GetEntries();
-      if (n2 < nMin) {
+      if (!bMin || n2 < nMin) {
          nMin = n2;
+         bMin = b;
       }
-      if (n2 > nMax) {
+      if (!bMax || n2 > nMax) {
          nMax = n2;
+         bMax = b;
       }
    }
-   if (nMin != nMax) {
-      Warning("SetEntries", "Tree branches have different numbers of entries, with %lld maximum.", nMax);
+   if (bMin && nMin != nMax) {
+      Warning("SetEntries", "Tree branches have different numbers of entries, eg %s has %lld entries while %s has %lld entries.",
+              bMin->GetName(), nMin, bMax->GetName(), nMax);
    }
    fEntries = nMax;
    return fEntries;
@@ -9161,7 +9164,7 @@ Int_t TTree::Write(const char *name, Int_t option, Int_t bufsize)
 ///
 /// Iterator on all the leaves in a TTree and its friend
 
-ClassImp(TTreeFriendLeafIter)
+ClassImp(TTreeFriendLeafIter);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Create a new iterator. By default the iteration direction

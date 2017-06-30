@@ -29,6 +29,7 @@
 #include "clang/Frontend/VerifyDiagnosticConsumer.h"
 #include "clang/Serialization/SerializationDiagnostic.h"
 #include "clang/Lex/Preprocessor.h"
+#include "clang/Lex/PreprocessorOptions.h"
 #include "clang/Sema/Sema.h"
 #include "clang/Sema/SemaDiagnostic.h"
 #include "clang/Serialization/ASTReader.h"
@@ -39,6 +40,7 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/Path.h"
 #include "llvm/Support/Process.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Target/TargetOptions.h"
@@ -51,6 +53,22 @@ using namespace clang;
 using namespace cling;
 
 namespace {
+  static constexpr unsigned CxxStdCompiledWith() {
+    // The value of __cplusplus in GCC < 5.0 (e.g. 4.9.3) when
+    // either -std=c++1y or -std=c++14 is specified is 201300L, which fails
+    // the test for C++14 or more (201402L) as previously specified.
+    // I would claim that the check should be relaxed to:
+#if __cplusplus > 201402L
+    return 17;
+#elif __cplusplus > 201103L
+    return 14;
+#elif __cplusplus >= 201103L
+    return 11;
+#else
+#error "Unknown __cplusplus version"
+#endif
+  }
+
   // This function isn't referenced outside its translation unit, but it
   // can't use the "static" keyword because its address is used for
   // GetMainExecutable (since some platforms don't support taking the
@@ -292,12 +310,6 @@ namespace {
           sArguments.addArgument("-isysroot", std::move(sysRoot));
         }
       }
-
-    #if defined(__GLIBCXX__)
-      // Avoid '__float128 is not supported on this target' errors
-      if (!opts.StdVersion)
-        sArguments.addArgument("-std=c++11");
-    #endif //__GLIBCXX__
   #endif // __APPLE__
 
 #endif // _MSC_VER
@@ -344,7 +356,8 @@ namespace {
     }
   }
 
-  static void SetClingCustomLangOpts(LangOptions& Opts) {
+  static void SetClingCustomLangOpts(LangOptions& Opts,
+                                     const CompilerOptions& CompilerOpts) {
     Opts.EmitAllDecls = 0; // Otherwise if PCH attached will codegen all decls.
 #ifdef _MSC_VER
 #ifdef _DEBUG
@@ -379,7 +392,6 @@ namespace {
     // Except -fexceptions -fcxx-exceptions.
 
     Opts.Deprecated = 1;
-    Opts.GNUKeywords = 0;
 
 #ifdef __APPLE__
     Opts.Blocks = 1;
@@ -388,42 +400,36 @@ namespace {
 
     // C++11 is turned on if cling is built with C++11: it's an interpreter;
     // cross-language compilation doesn't make sense.
-    // Extracted from Boost/config/compiler.
-    // SunProCC has no C++11.
-    // VisualC's support is not obvious to extract from Boost...
-
-    // The value of __cplusplus in GCC < 5.0 (e.g. 4.9.3) when
-    // either -std=c++1y or -std=c++14 is specified is 201300L, which fails
-    // the test for C++14 or more (201402L) as previously specified.
-    // I would claim that the check should be relaxed to:
 
     if (Opts.CPlusPlus) {
-#if __cplusplus > 201402L
-      Opts.CPlusPlus1z = 1;
-#endif
-#if __cplusplus > 201103L
-      Opts.CPlusPlus14 = 1;
-#endif
-#if __cplusplus >= 201103L
-      Opts.CPlusPlus11 = 1;
-#endif
+      switch (CxxStdCompiledWith()) {
+        case 17: Opts.CPlusPlus1z = 1;
+        case 14: Opts.CPlusPlus14 = 1;
+        case 11: Opts.CPlusPlus11 = 1;
+        default: break;
+      }
     }
 
 #ifdef _REENTRANT
     Opts.POSIXThreads = 1;
 #endif
-#ifdef __STRICT_ANSI__
-    Opts.GNUMode = 0;
-#else
-    Opts.GNUMode = 1;
-#endif
 #ifdef __FAST_MATH__
     Opts.FastMath = 1;
 #endif
+
+    if (CompilerOpts.DefaultLanguage(Opts)) {
+#ifdef __STRICT_ANSI__
+      Opts.GNUMode = 0;
+#else
+      Opts.GNUMode = 1;
+#endif
+      Opts.GNUKeywords = 0;
+    }
   }
 
   static void SetClingTargetLangOpts(LangOptions& Opts,
-                                     const TargetInfo& Target) {
+                                     const TargetInfo& Target,
+                                     const CompilerOptions& CompilerOpts) {
     if (Target.getTriple().getOS() == llvm::Triple::Win32) {
       Opts.MicrosoftExt = 1;
 #ifdef _MSC_VER
@@ -433,6 +439,25 @@ namespace {
       Opts.DelayedTemplateParsing = 1;
     } else {
       Opts.MicrosoftExt = 0;
+    }
+
+    if (CompilerOpts.DefaultLanguage(Opts)) {
+#if _GLIBCXX_USE_FLOAT128
+      // We are compiling with libstdc++ with __float128 enabled.
+      if (!Target.hasFloat128Type()) {
+        // clang currently supports native __float128 only on few targets, and
+        // this target does not have it. The most visible consequence of this is
+        // a specialization
+        //    __is_floating_point_helper<__float128>
+        // in include/c++/6.3.0/type_traits:344 that clang then rejects. The
+        // specialization is protected by !if _GLIBCXX_USE_FLOAT128 (which is
+        // unconditionally set in c++config.h) and #if !__STRICT_ANSI__. Tweak
+        // the latter by disabling GNUMode:
+        cling::errs()
+          << "Disabling gnu++: clang has no __float128 support on this target!";
+        Opts.GNUMode = 0;
+      }
+#endif //_GLIBCXX_USE_FLOAT128
     }
   }
 
@@ -526,6 +551,7 @@ static void stringifyPreprocSetting(PreprocessorOptions& PPOpts,
     PPOpts.addMacroDef("__CLING__clang__=" ClingStringify(__clang__));
 #elif defined(__GNUC__)
     PPOpts.addMacroDef("__CLING__GNUC__=" ClingStringify(__GNUC__));
+    PPOpts.addMacroDef("__CLING__GNUC_MINOR__=" ClingStringify(__GNUC_MINOR__));
 #elif defined(_MSC_VER)
     PPOpts.addMacroDef("__CLING__MSVC__=" ClingStringify(_MSC_VER));
 #endif
@@ -607,20 +633,21 @@ static void stringifyPreprocSetting(PreprocessorOptions& PPOpts,
   }
 
   static bool
-  SetupCompiler(CompilerInstance* CI, bool Lang = true, bool Targ = true) {
+  SetupCompiler(CompilerInstance* CI, const CompilerOptions& CompilerOpts,
+                bool Lang = true, bool Targ = true) {
     // Set the language options, which cling needs.
     // This may have already been done via a precompiled header
     if (Lang)
-      SetClingCustomLangOpts(CI->getLangOpts());
+      SetClingCustomLangOpts(CI->getLangOpts(), CompilerOpts);
 
     PreprocessorOptions& PPOpts = CI->getInvocation().getPreprocessorOpts();
     SetPreprocessorFromBinary(PPOpts);
 
     PPOpts.addMacroDef("__CLING__");
-    if (CI->getLangOpts().CPlusPlus11 == 1) {
-      // http://llvm.org/bugs/show_bug.cgi?id=13530
+    if (CI->getLangOpts().CPlusPlus11 == 1)
       PPOpts.addMacroDef("__CLING__CXX11");
-    }
+    if (CI->getLangOpts().CPlusPlus14 == 1)
+      PPOpts.addMacroDef("__CLING__CXX14");
 
     if (CI->getDiagnostics().hasErrorOccurred()) {
       cling::errs() << "Compiler error to early in initialization.\n";
@@ -638,7 +665,7 @@ static void stringifyPreprocSetting(PreprocessorOptions& PPOpts,
 
     // This may have already been done via a precompiled header
     if (Targ)
-      SetClingTargetLangOpts(CI->getLangOpts(), CI->getTarget());
+      SetClingTargetLangOpts(CI->getLangOpts(), CI->getTarget(), CompilerOpts);
 
     SetPreprocessorFromTarget(PPOpts, CI->getTarget().getTriple());
     return true;
@@ -730,8 +757,7 @@ static void stringifyPreprocSetting(PreprocessorOptions& PPOpts,
       argvCompile.push_back("-");
     }
 
-    std::unique_ptr<clang::CompilerInvocation>
-      InvocationPtr(new clang::CompilerInvocation);
+    auto InvocationPtr = std::make_shared<clang::CompilerInvocation>();
 
     // The compiler invocation is the owner of the diagnostic options.
     // Everything else points to them.
@@ -775,8 +801,7 @@ static void stringifyPreprocSetting(PreprocessorOptions& PPOpts,
 
     // Create and setup a compiler instance.
     std::unique_ptr<CompilerInstance> CI(new CompilerInstance());
-    CI->setInvocation(InvocationPtr.get());
-    InvocationPtr.release();
+    CI->setInvocation(InvocationPtr);
     CI->setDiagnostics(Diags.get()); // Diags is ref-counted
     if (!OnlyLex)
       CI->getDiagnosticOpts().ShowColors = cling::utils::ColorizeOutput();
@@ -797,7 +822,7 @@ static void stringifyPreprocSetting(PreprocessorOptions& PPOpts,
                         "output is supported.\n";
         return nullptr;
       }
-      if (!SetupCompiler(CI.get()))
+      if (!SetupCompiler(CI.get(), COpts))
         return nullptr;
 
       ProcessWarningOptions(*Diags, DiagOpts);
@@ -850,7 +875,8 @@ static void stringifyPreprocSetting(PreprocessorOptions& PPOpts,
                                                CI->getFileManager(),
                                                CI->getPCHContainerReader(),
                                                false /*FindModuleFileExt*/,
-                                               listener)) {
+                                               listener,
+                                         /*ValidateDiagnosticOptions=*/false)) {
           // When running interactively pass on the info that the PCH
           // has failed so that IncrmentalParser::Initialize won't try again.
           if (!HasInput && llvm::sys::Process::StandardInIsUserInput()) {
@@ -875,7 +901,7 @@ static void stringifyPreprocSetting(PreprocessorOptions& PPOpts,
     Invocation.getFrontendOpts().DisableFree = true;
 
     // Set up compiler language and target
-    if (!SetupCompiler(CI.get(), InitLang, InitTarget))
+    if (!SetupCompiler(CI.get(), COpts, InitLang, InitTarget))
       return nullptr;
 
     // Set up source managers

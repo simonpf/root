@@ -54,7 +54,7 @@ Bool_t TF1::fgRejectPoint = kFALSE;
 std::atomic<Bool_t> TF1::fgAddToGlobList(kTRUE);
 static Double_t gErrorTF1 = 0;
 
-ClassImp(TF1)
+ClassImp(TF1);
 
 // class wrapping evaluation of TF1(x) - y0
 class GFunc {
@@ -2690,7 +2690,7 @@ void TF1::Print(Option_t *option) const
          if (fFunctor)
             printf("Compiled based function: %s  based on a functor object.  Ndim = %d, Npar = %d\n", GetName(), GetNpar(), GetNdim());
          else {
-            printf("Function based on a list of points from a compiled based function: %s.  Ndim = %d, Npar = %d, Npx = %d\n", GetName(), GetNpar(), GetNdim(), int(fSave.size()));
+            printf("Function based on a list of points from a compiled based function: %s.  Ndim = %d, Npar = %d, Npx = %zu\n", GetName(), GetNpar(), GetNdim(), fSave.size());
             if (fSave.empty())
                Warning("Print", "Function %s is based on a list of points but list is empty", GetName());
          }

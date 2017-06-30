@@ -975,7 +975,7 @@ if(cling)
   #---These are the libraries that we link ROOT with CLING---------------------------
   set(CLING_LIBRARIES clingInterpreter clingMetaProcessor clingUtils)
   add_custom_target(CLING)
-  add_dependencies(CLING ${CLING_LIBRARIES} clang-headers)
+  add_dependencies(CLING ${CLING_LIBRARIES} clang-headers intrinsics_gen)
 endif()
 
 #---Check for gfal-------------------------------------------------------------------
@@ -1300,13 +1300,18 @@ elseif(vc)
       set(vc OFF CACHE BOOL "" FORCE)
     endif()
   endif()
+  if(Vc_FOUND)
+    # FIXME - The altenative is to add include_dirs to all packages that include any Math headers
+    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/include)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${Vc_INCLUDE_DIR}/Vc ${CMAKE_BINARY_DIR}/include/Vc)
+  endif()
 endif()
 
 if(vc AND NOT Vc_FOUND AND NOT (veccore OR builtin_veccore))
-  set(Vc_VERSION "1.3.0")
+  set(Vc_VERSION "1.3.2")
   set(Vc_PROJECT "Vc-${Vc_VERSION}")
   set(Vc_SRC_URI "${lcgpackages}/${Vc_PROJECT}.tar.gz")
-  set(Vc_SRC_MD5 "a248e904f0b1a330ad8f37ec50cbad30")
+  set(Vc_SRC_MD5 "f996a2dcab9f0ef3e21ba0d0feba9c3e")
   set(Vc_DESTDIR "${CMAKE_BINARY_DIR}/VC-prefix/install")
   set(Vc_ROOTDIR "${Vc_DESTDIR}/${CMAKE_INSTALL_PREFIX}")
   set(Vc_LIBNAME "${CMAKE_STATIC_LIBRARY_PREFIX}Vc${CMAKE_STATIC_LIBRARY_SUFFIX}")
@@ -1373,6 +1378,11 @@ elseif(veccore)
       message(STATUS "Please enable the option 'builtin_veccore' to build VecCore internally.")
       set(veccore OFF CACHE BOOL "" FORCE)
     endif()
+  endif()
+  if(VecCore_FOUND)
+    # FIXME - The altenative is to add include_dirs to all packages that include any Math headers
+    execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/include)
+    execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ${VecCore_INCLUDE_DIR}/VecCore ${CMAKE_BINARY_DIR}/include/VecCore)
   endif()
 endif()
 
@@ -1520,16 +1530,16 @@ endif()
 #---Download googletest--------------------------------------------------------------
 if (testing)
   # FIXME: Remove our version of gtest in roottest. We can reuse this one.
-  # Add gtest
+  # Add googletest
   # http://stackoverflow.com/questions/9689183/cmake-googletest
 
-  set(_byproduct_binary_dir
+  set(_gtest_byproduct_binary_dir
     ${CMAKE_CURRENT_BINARY_DIR}/googletest-prefix/src/googletest-build/googlemock/)
-  set(_byproducts
-    ${_byproduct_binary_dir}/gtest/libgtest.a
-    ${_byproduct_binary_dir}/gtest/libgtest_main.a
-    ${_byproduct_binary_dir}/libgmock.a
-    ${_byproduct_binary_dir}/libgmock_main.a
+  set(_gtest_byproducts
+    ${_gtest_byproduct_binary_dir}/gtest/libgtest.a
+    ${_gtest_byproduct_binary_dir}/gtest/libgtest_main.a
+    ${_gtest_byproduct_binary_dir}/libgmock.a
+    ${_gtest_byproduct_binary_dir}/libgmock_main.a
     )
 
   ExternalProject_Add(
@@ -1552,7 +1562,7 @@ if (testing)
                   -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
     # Disable install step
     INSTALL_COMMAND ""
-    BUILD_BYPRODUCTS ${_byproducts}
+    BUILD_BYPRODUCTS ${_gtest_byproducts}
     # Wrap download, configure and build steps in a script to log output
     LOG_DOWNLOAD ON
     LOG_CONFIGURE ON
@@ -1567,25 +1577,15 @@ if (testing)
   ExternalProject_Get_Property(googletest binary_dir)
   set(_G_LIBRARY_PATH ${binary_dir}/googlemock/)
 
-  # gtest
-  add_library(gtest IMPORTED STATIC GLOBAL)
+  # Register gtest, gtest_main, gmock, gmock_main
+  foreach (lib gtest gtest_main gmock gmock_main)
+    add_library(${lib} IMPORTED STATIC GLOBAL)
+    add_dependencies(${lib} googletest)
+  endforeach()
   set_property(TARGET gtest PROPERTY IMPORTED_LOCATION ${_G_LIBRARY_PATH}/gtest/libgtest.a)
-  add_dependencies(gtest googletest)
-
-  # gtest_main
-  add_library(gtest_main IMPORTED STATIC GLOBAL)
   set_property(TARGET gtest_main PROPERTY IMPORTED_LOCATION ${_G_LIBRARY_PATH}/gtest/libgtest_main.a)
-  add_dependencies(gtest_main googletest)
-
-  # gmock
-  add_library(gmock IMPORTED STATIC GLOBAL)
   set_property(TARGET gmock PROPERTY IMPORTED_LOCATION ${_G_LIBRARY_PATH}/libgmock.a)
-  add_dependencies(gmock googletest)
-
-  # gmock_main
-  add_library(gmock_main IMPORTED STATIC GLOBAL)
   set_property(TARGET gmock_main PROPERTY IMPORTED_LOCATION ${_G_LIBRARY_PATH}/libgmock_main.a)
-  add_dependencies(gmock_main googletest)
 
 endif()
 

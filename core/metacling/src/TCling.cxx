@@ -89,6 +89,7 @@ clang/LLVM technology.
 #include "clang/Frontend/FrontendDiagnostic.h"
 #include "clang/Lex/HeaderSearch.h"
 #include "clang/Lex/Preprocessor.h"
+#include "clang/Lex/PreprocessorOptions.h"
 #include "clang/Sema/Lookup.h"
 #include "clang/Sema/Sema.h"
 #include "clang/Parse/Parser.h"
@@ -560,10 +561,13 @@ void TCling__UpdateListsOnUnloaded(const cling::Transaction &T) {
 
    ((TCling*)gCling)->UpdateListsOnUnloaded(T);
 }
+
+extern "C"
 void TCling__TransactionRollback(const cling::Transaction &T) {
 
    ((TCling*)gCling)->TransactionRollback(T);
 }
+
 extern "C" void TCling__LibraryLoadedRTTI(const void* dyLibHandle,
                                           const char* canonicalName) {
 
@@ -1075,15 +1079,17 @@ TCling::TCling(const char *name, const char *title)
       // Add the current path to the include path
       // TCling::AddIncludePath(".");
 
-      std::string pchFilename = interpInclude + "/allDict.cxx.pch";
-      if (gSystem->Getenv("ROOT_PCH")) {
-         pchFilename = gSystem->Getenv("ROOT_PCH");
-      }
-      clingArgsStorage.push_back("-include-pch");
-      clingArgsStorage.push_back(pchFilename);
+      // Attach the PCH (unless we have C++ modules enabled which provide the
+      // same functionality).
+      if (!getenv("ROOT_MODULES")) {
+         std::string pchFilename = interpInclude + "/allDict.cxx.pch";
+         if (gSystem->Getenv("ROOT_PCH")) {
+            pchFilename = gSystem->Getenv("ROOT_PCH");
+         }
 
-      // clingArgsStorage.push_back("-Xclang");
-      // clingArgsStorage.push_back("-fmodules");
+         clingArgsStorage.push_back("-include-pch");
+         clingArgsStorage.push_back(pchFilename);
+      }
 
       clingArgsStorage.push_back("-Wno-undefined-inline");
       clingArgsStorage.push_back("-fsigned-char");
@@ -1144,7 +1150,7 @@ TCling::TCling(const char *name, const char *title)
                             + gClassDefInterpMacro + "\n"
                             + gInterpreterClassDef + "\n"
                             + "#undef ClassImp\n"
-                            "#define ClassImp(X)\n"
+                            "#define ClassImp(X);\n"
                             "#include <string>\n"
                             "using namespace std;");
    }
@@ -1890,6 +1896,7 @@ static int HandleInterpreterException(cling::MetaProcessor* metaProcessor,
    {
       Error("HandleInterpreterException", "%s.\n%s", ex.what(), "Execution of your code was aborted.");
       ex.diagnose();
+      compRes = cling::Interpreter::kFailure;
    }
    return 0;
 }
@@ -2628,6 +2635,7 @@ Bool_t TCling::IsLoaded(const char* filename) const
                                               /*RelativePath*/ 0,
                                               /*RequestingModule*/ 0,
                                               /*SuggestedModule*/ 0,
+                                              /*IsMapped*/ 0,
                                               /*SkipCache*/ false,
                                               /*BuildSystemModule*/ false,
                                               /*OpenFile*/ false,
@@ -2974,6 +2982,12 @@ Bool_t TCling::HandleNewTransaction(const cling::Transaction &T)
 
 void TCling::RecursiveRemove(TObject* obj)
 {
+   // NOTE: When replacing the mutex by a ReadWrite mutex, we **must**
+   // put in place the Read/Write part here.  Keeping the write lock
+   // here is 'catasptrophic' for scaling as it means that ALL calls
+   // to RecursiveRemove will take the write lock and performance
+   // of many threads trying to access the write lock at the same
+   // time is relatively bad.
    R__LOCKGUARD(gInterpreterMutex);
    // Note that fgSetOfSpecials is supposed to be updated by TClingCallbacks::tryFindROOTSpecialInternal
    // (but isn't at the moment).
@@ -4785,6 +4799,11 @@ namespace {
 
 Int_t TCling::LoadLibraryMap(const char* rootmapfile)
 {
+   // Don't load any rootmaps when we have are running in modules mode
+   // because we don't want to rely on those forward declarations here.
+   // This functionality is replaced by the 'link' attribute in the modulemap.
+   if (getenv("ROOT_MODULES")) return 0;
+
    R__LOCKGUARD(gInterpreterMutex);
    // open the [system].rootmap files
    if (!fMapfile) {
@@ -6844,6 +6863,15 @@ void TCling::CallFunc_SetFuncProto(CallFunc_t* func, ClassInfo_t* info, const ch
       funcProto.push_back( ((TClingTypeInfo*)(*iter))->GetQualType() );
    }
    f->SetFuncProto(ci, method, funcProto, objectIsConst, offset, mode);
+}
+
+std::string TCling::CallFunc_GetWrapperCode(CallFunc_t *func) const
+{
+   TClingCallFunc *f = (TClingCallFunc *)func;
+   std::string wrapper_name;
+   std::string wrapper;
+   f->get_wrapper_code(wrapper_name, wrapper);
+   return wrapper;
 }
 
 //______________________________________________________________________________

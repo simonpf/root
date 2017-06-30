@@ -128,21 +128,6 @@ void Fitter::SetFunction(const IModelFunction & func, bool useGradient)
    fFunc_v.reset();
 }
 
-#ifdef R__HAS_VECCORE
-void Fitter::SetFunction(const IModelFunction_v & func)
-{
-   //  set the fit model function (clone the given one and keep a copy )
-   //std::cout << "set a non-grad function" << std::endl;
-   fUseGradient = false;
-   fFunc_v = std::shared_ptr<IModelFunction_v>(dynamic_cast<IModelFunction_v *>(func.Clone() ) );
-   assert(fFunc_v);
-
-   // creates the parameter  settings
-   fConfig.CreateParamsSettings(*fFunc_v);
-   fFunc.reset();
-}
-#endif
-
 void Fitter::SetFunction(const IModel1DFunction & func, bool useGradient)
 {
    fUseGradient = useGradient;
@@ -392,7 +377,7 @@ bool Fitter::DoLeastSquareFit(ROOT::Fit::ExecutionPolicy executionPolicy) {
   return false;
 }
 
-bool Fitter::DoBinnedLikelihoodFit(bool extended) {
+bool Fitter::DoBinnedLikelihoodFit(bool extended, ROOT::Fit::ExecutionPolicy executionPolicy) {
    // perform a likelihood fit on a set of binned data
    // The fit is extended (Poisson logl_ by default
 
@@ -426,7 +411,7 @@ bool Fitter::DoBinnedLikelihoodFit(bool extended) {
 
    if (!fUseGradient) {
       // do minimization without using the gradient
-      PoissonLikelihoodFCN<BaseFunc> logl(data,fFunc, useWeight, extended);
+      PoissonLikelihoodFCN<BaseFunc> logl(data, fFunc, useWeight, extended, executionPolicy);
       fFitType = logl.Type();
       // do minimization
       if (!DoMinimization (logl, &chi2) ) return false;
@@ -449,7 +434,7 @@ bool Fitter::DoBinnedLikelihoodFit(bool extended) {
       if (!extended) {
          MATH_WARN_MSG("Fitter::DoBinnedLikelihoodFit","Not-extended binned fit with gradient not yet supported - do an extended fit");
       }
-      PoissonLikelihoodFCN<BaseGradFunc> logl(data,gradFun, useWeight, true);
+      PoissonLikelihoodFCN<BaseGradFunc> logl(data, gradFun, useWeight, true, executionPolicy);
       fFitType = logl.Type();
       // do minimization
       if (!DoMinimization (logl, &chi2) ) return false;

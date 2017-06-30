@@ -153,7 +153,7 @@ ROOT::TRWSpinLock TFile::fgRwLock;
 
 const Int_t kBEGIN = 100;
 
-ClassImp(TFile)
+ClassImp(TFile);
 
 //*-*x17 macros/layout_file
 // Needed to add the "fake" global gFile to the list of globals.
@@ -938,7 +938,7 @@ void TFile::Close(Option_t *option)
    // If gDirectory points to this object or any of the nested
    // TDirectoryFile, TDirectoryFile::Close will induce the proper cd.
    fMustFlush = kFALSE; // Make sure there is only one Flush.
-   TDirectoryFile::Close();
+   TDirectoryFile::Close(option);
 
    if (IsWritable()) {
       TFree *f1 = (TFree*)fFree->First();

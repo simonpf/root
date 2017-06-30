@@ -347,7 +347,7 @@ TMinuit *gMinuit;
 
 static const char charal[29] = " .ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-ClassImp(TMinuit)
+ClassImp(TMinuit);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Minuit normal constructor
@@ -6095,7 +6095,7 @@ void TMinuit::mnplot(Double_t *xpt, Double_t *ypt, char *chpt, Int_t nxypt, Int_
    Int_t nxbest, nybest, km1, ibk, isp1, nx, ny, ks, ix;
    TString chmess, ctemp;
    Bool_t overpr;
-   char cline[120];
+   char cline[144];
    char chsav, chbest;
 
    /* Function Body */
@@ -6227,10 +6227,10 @@ L400:
       xvalus[ibk-1] = xmin + Double_t(ibk-1)*10*bwidx;
    }
    iten = (nx + 9) / 10;
-   for (ibk = 1; ibk <= iten && ibk <= 12; ++ibk) {
-      snprintf(cline + (ibk-1)*10, 11-(ibk == 12), "%#9.3g ", xvalus[ibk-1]);
-   }
-   Printf("           %s", cline);
+   Printf("           ");
+   for (ibk = 1; ibk <= iten; ++ibk)
+      Printf("%# 8.3g ", xvalus[ibk-1]);
+   Printf("\n");
    chmess = " ";
    if (overpr) chmess = "   Overprint character is &";
    Printf("                         ONE COLUMN=%13.7g%s",bwidx,(const char*)chmess);

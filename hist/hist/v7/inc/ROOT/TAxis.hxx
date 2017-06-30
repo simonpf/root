@@ -68,7 +68,7 @@ protected:
   /// \return Returns the bin number adjusted for potential over- and underflow
   /// bins. Returns kIgnoreBin if the axis cannot handle the over- / underflow,
   /// in which case `status` will tell how to deal with this overflow.
-  int AdjustOverflowBinNumber(int rawbin) const {
+  int AdjustOverflowBinNumber(double rawbin) const {
     if (rawbin < 0) return 0;
     // Take underflow into account.
     ++rawbin;
@@ -76,7 +76,7 @@ protected:
     if (rawbin >= GetNBins())
       return GetNBins() - 1;
 
-    return rawbin;
+    return (int)rawbin;
   }
 
 public:
@@ -485,7 +485,7 @@ public:
   /// \note Passing a bin border coordinate can either return the bin above or
   /// below the bin border. I.e. don't do that for reliable results!
   int FindBin(double x) const noexcept {
-    int rawbin = (x - fLow) * fInvBinWidth;
+    double rawbin = (x - fLow) * fInvBinWidth;
     return AdjustOverflowBinNumber(rawbin);
   }
 
@@ -681,13 +681,11 @@ public:
   int FindBin(double x) const noexcept {
     const auto bBegin = fBinBorders.begin();
     const auto bEnd = fBinBorders.end();
+    // lower_bound finds the first bin border that is >= x.
     auto iNotLess = std::lower_bound(bBegin, bEnd, x);
     int rawbin = iNotLess - bBegin;
-    // if x is < bBegin then iNotLess == bBegin thus rawbin == 0:
-    // we don't want not-less but just-below, thus:
-    rawbin -= 1;
-    // No need for AdjustOverflowBinNumber(rawbin) here; lower_bound() - 1 is
-    // the answer.
+    // No need for AdjustOverflowBinNumber(rawbin) here; lower_bound() is the
+    // answer: e.g. for x < *bBegin, rawbin is 0.
     return rawbin;
   }
 

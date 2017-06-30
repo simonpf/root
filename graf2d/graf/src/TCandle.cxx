@@ -22,7 +22,7 @@ Double_t TCandle::fBoxRange      = 0.5;
 Bool_t TCandle::fScaledCandle = false;
 Bool_t TCandle::fScaledViolin = true;
 
-ClassImp(TCandle)
+ClassImp(TCandle);
 
 /** \class TCandle
 \ingroup BasicGraphics
@@ -284,7 +284,7 @@ int TCandle::ParseOption(char * opt) {
             if (isHorizontal) {fOption = (CandleOption)(fOption + kHorizontal);}
             strncpy(brOpen,"                ",brClose-brOpen+1); //Cleanup
 
-            sprintf(fOptionStr,"CANDLE%c(%ld)",direction,fOption);
+            sprintf(fOptionStr,"CANDLE%c(%ld)",direction,(long)fOption);
          } else {
             preset = 1;
             fOption = (CandleOption)(fOption + fallbackCandle);
@@ -342,7 +342,7 @@ int TCandle::ParseOption(char * opt) {
             if (isHorizontal) {fOption = (CandleOption)(fOption + kHorizontal);}
             strncpy(brOpen,"                ",brClose-brOpen+1); //Cleanup
 
-            sprintf(fOptionStr,"VIOLIN%c(%ld)",direction,fOption);
+            sprintf(fOptionStr,"VIOLIN%c(%ld)",direction,(long)fOption);
 
          } else {
             preset = 1;

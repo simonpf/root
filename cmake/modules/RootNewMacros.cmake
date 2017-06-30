@@ -56,18 +56,6 @@ else()
       IMPORT_PREFIX ${libprefix} )
 endif()
 
-#---Modify the behaviour for local and non-local builds--------------------------------------------
-
-if(CMAKE_PROJECT_NAME STREQUAL ROOT)
-  set(rootcint_cmd rootcling_stage1)
-  set(genreflex_cmd genreflex)
-  set(ROOTCINTDEP rootcling_stage1)
-else()
-  set(rootcint_cmd rootcling)
-  set(genreflex_cmd genreflex)
-  set(ROOTCINTDEP)
-endif()
-
 set(CMAKE_VERBOSE_MAKEFILES OFF)
 set(CMAKE_INCLUDE_CURRENT_DIR OFF)
 
@@ -367,6 +355,8 @@ function(ROOT_GENERATE_DICTIONARY dictionary)
     if(CMAKE_PROJECT_NAME STREQUAL ROOT)
       set(command ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}/lib:$ENV{LD_LIBRARY_PATH}" "ROOTIGNOREPREFIX=1" $<TARGET_FILE:rootcling> -rootbuild)
       set(ROOTCINTDEP rootcling)
+    elseif(TARGET ROOT::rootcling)
+      set(command ROOT::rootcling)
     else()
       set(command rootcling)
     endif()
@@ -383,9 +373,15 @@ function(ROOT_GENERATE_DICTIONARY dictionary)
     list(APPEND _implicitdeps CXX ${_dep})
   endforeach()
 
+  set(genverbosity "")
+  # Set -v2 when generating modules in cxxmodules mode to get warnings if the
+  # modulemap doesn't fit to the structure of our dictionaries.
+  if (cxxmodules)
+      set(genverbosity "-v2")
+  endif(cxxmodules)
   #---call rootcint------------------------------------------
   add_custom_command(OUTPUT ${dictionary}.cxx ${pcm_name} ${rootmap_name}
-                     COMMAND ${command} -f  ${dictionary}.cxx ${newargs} ${excludepathsargs} ${rootmapargs}
+                     COMMAND ${command} ${genverbosity} -f  ${dictionary}.cxx ${newargs} ${excludepathsargs} ${rootmapargs}
                                         ${ARG_OPTIONS} ${definitions} ${includedirs} ${headerfiles} ${_linkdef}
                      IMPLICIT_DEPENDS ${_implicitdeps}
                      DEPENDS ${_list_of_header_dependencies} ${_linkdef} ${ROOTCINTDEP})
@@ -408,28 +404,22 @@ function(ROOT_GENERATE_DICTIONARY dictionary)
                     DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT libraries)
     endif()
   endif()
-  if(cxxmodules)
-    # FIXME: Support mulptiple dictionaries. In some cases (libSMatrix and
-    # libGenVector) we have to have two or more dictionaries (eg. for math,
-    # we need the two for double vs Double32_t template specializations).
-    # In some other cases, eg. libTreePlayer.so we add in a separate dictionary
-    # files which for some reason (temporarily?) cannot be put in the PCH. Eg.
-    # all rest of the first dict is in the PCH but this file is not and it
-    # cannot be present in the original dictionary.
-    if(NOT ARG_MULTIDICT)
-      ROOT_CXXMODULES_APPEND_TO_MODULEMAP("${library_name}" "${headerfiles}")
-    endif()
-  endif(cxxmodules)
+  # FIXME: Support mulptiple dictionaries. In some cases (libSMatrix and
+  # libGenVector) we have to have two or more dictionaries (eg. for math,
+  # we need the two for double vs Double32_t template specializations).
+  # In some other cases, eg. libTreePlayer.so we add in a separate dictionary
+  # files which for some reason (temporarily?) cannot be put in the PCH. Eg.
+  # all rest of the first dict is in the PCH but this file is not and it
+  # cannot be present in the original dictionary.
+  if(NOT ARG_MULTIDICT)
+    ROOT_CXXMODULES_APPEND_TO_MODULEMAP("${library_name}" "${headerfiles}")
+  endif()
 endfunction()
 
 #---------------------------------------------------------------------------------------------------
 #---ROOT_CXXMODULES_APPEND_TO_MODULEMAP( library library_headers )
 #---------------------------------------------------------------------------------------------------
 function (ROOT_CXXMODULES_APPEND_TO_MODULEMAP library library_headers)
-  if(NOT cxxmodules)
-    message(FATAL_ERROR "Calling ROOT_CXXMODULES_APPEND_TO_MODULEMAP on non-modules build.")
-  endif()
-
   ROOT_FIND_DIRS_WITH_HEADERS(dirs)
 
   # Variable 'dirs' is the return result of ROOT_FIND_DIRS_WITH_HEADERS.
@@ -1138,8 +1128,8 @@ endfunction()
 function(ROOT_ADD_GTEST test_suite)
   CMAKE_PARSE_ARGUMENTS(ARG "" "" "LIBRARIES" ${ARGN})
   include_directories(${CMAKE_CURRENT_BINARY_DIR} ${GTEST_INCLUDE_DIR} ${GMOCK_INCLUDE_DIR})
-
-  set(source_files ${ARG_UNPARSED_ARGUMENTS})
+  
+  ROOT_GET_SOURCES(source_files . ${ARG_UNPARSED_ARGUMENTS})
   # Note we cannot use ROOT_EXECUTABLE without user-specified set of LIBRARIES to link with.
   # The test suites should choose this in their specific CMakeLists.txt file.
   # FIXME: For better coherence we could restrict the libraries the test suite could link

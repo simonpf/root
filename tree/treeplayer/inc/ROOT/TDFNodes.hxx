@@ -11,6 +11,7 @@
 #ifndef ROOT_TDFNODES
 #define ROOT_TDFNODES
 
+#include "ROOT/TypeTraits.hxx"
 #include "ROOT/TDFUtils.hxx"
 #include "ROOT/RArrayView.hxx"
 #include "ROOT/TSpinMutex.hxx"
@@ -32,6 +33,7 @@ class TActionBase;
 
 namespace Detail {
 namespace TDF {
+using namespace ROOT::TypeTraits;
 namespace TDFInternal = ROOT::Internal::TDF;
 
 // forward declarations for TLoopManager
@@ -48,22 +50,31 @@ using RangeBaseVec_t = std::vector<RangeBasePtr_t>;
 
 class TLoopManager : public std::enable_shared_from_this<TLoopManager> {
 
+   enum class ELoopType { kROOTFiles, kNoFiles };
+
    ActionBaseVec_t fBookedActions;
    FilterBaseVec_t fBookedFilters;
    FilterBaseVec_t fBookedNamedFilters;
    std::map<std::string, TmpBranchBasePtr_t> fBookedBranches;
    RangeBaseVec_t fBookedRanges;
    std::vector<std::shared_ptr<bool>> fResProxyReadiness;
-   ::TDirectory *fDirPtr{nullptr};
+   ::TDirectory * const fDirPtr{nullptr};
    std::shared_ptr<TTree> fTree{nullptr};
    const ColumnNames_t fDefaultBranches;
    const Long64_t fNEmptyEntries{0};
-   const unsigned int fNSlots{0};
+   const unsigned int fNSlots{1};
    bool fHasRunAtLeastOnce{false};
    unsigned int fNChildren{0};      ///< Number of nodes of the functional graph hanging from this object
    unsigned int fNStopsReceived{0}; ///< Number of times that a children node signaled to stop processing entries.
+   const ELoopType fLoopType; ///< The kind of event loop that is going to be run (e.g. on ROOT files, on no files)
 
+   void RunEmptySourceMT();
+   void RunEmptySource();
+   void RunTreeProcessorMT();
+   void RunTreeReader();
    void RunAndCheckFilters(unsigned int slot, Long64_t entry);
+   void InitAllNodes(TTreeReader *r, unsigned int slot);
+   void CreateSlots(unsigned int nSlots);
 
 public:
    TLoopManager(TTree *tree, const ColumnNames_t &defaultBranches);
@@ -71,8 +82,6 @@ public:
    TLoopManager(const TLoopManager &) = delete;
    ~TLoopManager(){};
    void Run();
-   void InitAllNodes(TTreeReader *r, unsigned int slot);
-   void CreateSlots(unsigned int nSlots);
    TLoopManager *GetImplPtr();
    std::shared_ptr<TLoopManager> GetSharedPtr() { return shared_from_this(); }
    const ColumnNames_t &GetDefaultBranches() const;
@@ -81,7 +90,7 @@ public:
    TCustomColumnBase *GetBookedBranch(const std::string &name) const;
    const std::map<std::string, TmpBranchBasePtr_t> &GetBookedBranches() const { return fBookedBranches; }
    ::TDirectory *GetDirectory() const;
-   std::string GetTreeName() const;
+   Long64_t GetNEmptyEntries() const { return fNEmptyEntries; }
    void Book(const ActionBasePtr_t &actionPtr);
    void Book(const FilterBasePtr_t &filterPtr);
    void Book(const TmpBranchBasePtr_t &branchPtr);
@@ -130,7 +139,7 @@ class TColumnValue {
    // following line is equivalent to pseudo-code: ProxyParam_t == array_view<U> ? U : T
    // ReaderValueOrArray_t is a TTreeReaderValue<T> unless T is array_view<U>
    using ProxyParam_t = typename std::conditional<std::is_same<ReaderValueOrArray_t<T>, TTreeReaderValue<T>>::value, T,
-                                                  ExtractType_t<T>>::type;
+                                                  TakeFirstParameter_t<T>>::type;
    std::unique_ptr<TTreeReaderValue<T>> fReaderValue{nullptr}; //< Owning ptr to a TTreeReaderValue. Used for
                                                                /// non-temporary columns and T != std::array_view<U>
    std::unique_ptr<TTreeReaderArray<ProxyParam_t>> fReaderArray{nullptr}; //< Owning ptr to a TTreeReaderArray. Used for
@@ -189,7 +198,7 @@ struct TTDFValueTuple {
 };
 
 template <typename... BranchTypes>
-struct TTDFValueTuple<TTypeList<BranchTypes...>> {
+struct TTDFValueTuple<TypeList<BranchTypes...>> {
    using type = std::tuple<TColumnValue<BranchTypes>...>;
 };
 
@@ -213,7 +222,7 @@ public:
 
 template <typename Helper, typename PrevDataFrame, typename BranchTypes_t = typename Helper::BranchTypes_t>
 class TAction final : public TActionBase {
-   using TypeInd_t = typename TGenStaticSeq<BranchTypes_t::fgSize>::Type_t;
+   using TypeInd_t = TDFInternal::GenStaticSeq_t<BranchTypes_t::list_size>;
 
    Helper fHelper;
    const ColumnNames_t fBranches;
@@ -243,7 +252,7 @@ public:
    }
 
    template <int... S>
-   void Exec(unsigned int slot, Long64_t entry, TStaticSeq<S...>)
+   void Exec(unsigned int slot, Long64_t entry, TDFInternal::StaticSeq<S...>)
    {
       (void)entry; // avoid bogus 'unused parameter' warning in gcc4.9
       fHelper.Exec(slot, std::get<S>(fValues[slot]).Get(entry)...);
@@ -287,13 +296,13 @@ public:
 
 template <typename F, typename PrevData>
 class TCustomColumn final : public TCustomColumnBase {
-   using BranchTypes_t = typename TDFInternal::TFunctionTraits<F>::Args_t;
-   using TypeInd_t = typename TDFInternal::TGenStaticSeq<BranchTypes_t::fgSize>::Type_t;
-   using Ret_t = typename TDFInternal::TFunctionTraits<F>::Ret_t;
+   using BranchTypes_t = typename CallableTraits<F>::arg_types;
+   using TypeInd_t = TDFInternal::GenStaticSeq_t<BranchTypes_t::list_size>;
+   using ret_type = typename CallableTraits<F>::ret_type;
 
    F fExpression;
    const ColumnNames_t fBranches;
-   std::vector<std::unique_ptr<Ret_t>> fLastResultPtr;
+   std::vector<std::unique_ptr<ret_type>> fLastResultPtr;
    PrevData &fPrevData;
    std::vector<Long64_t> fLastCheckedEntry = {-1};
 
@@ -326,14 +335,15 @@ public:
       }
    }
 
-   const std::type_info &GetTypeId() const { return typeid(Ret_t); }
+   const std::type_info &GetTypeId() const { return typeid(ret_type); }
 
    void CreateSlots(unsigned int nSlots) final
    {
       fValues.resize(nSlots);
       fLastCheckedEntry.resize(nSlots, -1);
       fLastResultPtr.resize(nSlots);
-      std::generate(fLastResultPtr.begin(), fLastResultPtr.end(), []() { return std::unique_ptr<Ret_t>(new Ret_t()); });
+      std::generate(fLastResultPtr.begin(), fLastResultPtr.end(),
+                    []() { return std::unique_ptr<ret_type>(new ret_type()); });
    }
 
    bool CheckFilters(unsigned int slot, Long64_t entry) final
@@ -343,10 +353,12 @@ public:
    }
 
    template <int... S, typename... BranchTypes>
-   void UpdateHelper(unsigned int slot, Long64_t entry, TDFInternal::TStaticSeq<S...>,
-                     TDFInternal::TTypeList<BranchTypes...>)
+   void UpdateHelper(unsigned int slot, Long64_t entry, TDFInternal::StaticSeq<S...>, TypeList<BranchTypes...>)
    {
       *fLastResultPtr[slot] = fExpression(std::get<S>(fValues[slot]).Get(entry)...);
+      // silence "unused parameter" warnings in gcc
+      (void)slot;
+      (void)entry;
    }
 
    // recursive chain of `Report`s
@@ -393,8 +405,8 @@ public:
 
 template <typename FilterF, typename PrevDataFrame>
 class TFilter final : public TFilterBase {
-   using BranchTypes_t = typename TDFInternal::TFunctionTraits<FilterF>::Args_t;
-   using TypeInd_t = typename TDFInternal::TGenStaticSeq<BranchTypes_t::fgSize>::Type_t;
+   using BranchTypes_t = typename CallableTraits<FilterF>::arg_types;
+   using TypeInd_t = TDFInternal::GenStaticSeq_t<BranchTypes_t::list_size>;
 
    FilterF fFilter;
    const ColumnNames_t fBranches;
@@ -440,9 +452,12 @@ public:
    }
 
    template <int... S>
-   bool CheckFilterHelper(unsigned int slot, Long64_t entry, TDFInternal::TStaticSeq<S...>)
+   bool CheckFilterHelper(unsigned int slot, Long64_t entry, TDFInternal::StaticSeq<S...>)
    {
       return fFilter(std::get<S>(fValues[slot]).Get(entry)...);
+      // silence "unused parameter" warnings in gcc
+      (void)slot;
+      (void)entry;
    }
 
    void Init(TTreeReader *r, unsigned int slot) final
@@ -480,6 +495,7 @@ protected:
    ULong64_t fNProcessedEntries{0};
    unsigned int fNChildren{0};      ///< Number of nodes of the functional graph hanging from this object
    unsigned int fNStopsReceived{0}; ///< Number of times that a children node signaled to stop processing entries.
+   bool fHasStopped{false}; ///< True if the end of the range has been reached
 
 public:
    TRangeBase(TLoopManager *implPtr, const ColumnNames_t &tmpBranches, unsigned int start, unsigned int stop,
@@ -509,7 +525,9 @@ public:
    /// Ranges act as filters when it comes to selecting entries that downstream nodes should process
    bool CheckFilters(unsigned int slot, Long64_t entry) final
    {
-      if (entry != fLastCheckedEntry) {
+      if (fHasStopped) {
+         return false;
+      } else if (entry != fLastCheckedEntry) {
          if (!fPrevData.CheckFilters(slot, entry)) {
             // a filter upstream returned false, cache the result
             fLastResult = false;
@@ -521,7 +539,10 @@ public:
                fLastResult = false;
             else
                fLastResult = true;
-            if (fNProcessedEntries == fStop) fPrevData.StopProcessing();
+            if (fNProcessedEntries == fStop) {
+               fHasStopped = true;
+               fPrevData.StopProcessing();
+            }
          }
          fLastCheckedEntry = entry;
       }
@@ -537,7 +558,7 @@ public:
    void StopProcessing()
    {
       ++fNStopsReceived;
-      if (fNStopsReceived == fNChildren) fPrevData.StopProcessing();
+      if (fNStopsReceived == fNChildren && !fHasStopped) fPrevData.StopProcessing();
    }
 };
 
