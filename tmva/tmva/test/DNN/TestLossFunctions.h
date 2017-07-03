@@ -84,7 +84,7 @@ auto testMeanSquaredErrorGradients(size_t ntests)
       size_t m = rand() % 100 + 1;
       size_t n = rand() % 100 + 1;
 
-      TMatrixT<Double_t> W(m, n);
+      TMatrixT<Double_t> W(m, 1);
       TMatrixT<Double_t> X(m, n);
       TMatrixT<Double_t> Y(m, n);
       TMatrixT<Double_t> ZRef(m, n);
@@ -141,6 +141,7 @@ auto testCrossEntropy(size_t ntests)
       TMatrixT<Double_t> Z(m, n);
 
       randomMatrix(W);
+      W = 1.0;
       randomMatrix(X);
       randomMatrix(Y);
 
@@ -240,7 +241,7 @@ auto testSoftmaxCrossEntropy(size_t ntests)
       size_t m = rand() % 100 + 1;
       size_t n = rand() % 100 + 1;
 
-      TMatrixT<Double_t> W(m, n);
+      TMatrixT<Double_t> W(m, 1);
       TMatrixT<Double_t> X(m, n);
       TMatrixT<Double_t> Y(m, n);
       TMatrixT<Double_t> Z(m, n);
@@ -291,7 +292,7 @@ auto testSoftmaxCrossEntropyGradients(size_t ntests)
       size_t m = 8; //rand() % 100 + 1;
       size_t n = 8; //rand() % 100 + 1;
 
-      TMatrixT<Double_t> W(m, n);
+      TMatrixT<Double_t> W(m, 1);
       TMatrixT<Double_t> X(m, n);
       TMatrixT<Double_t> Y(m, n);
       TMatrixT<Double_t> ZRef(m, n);
@@ -321,11 +322,11 @@ auto testSoftmaxCrossEntropyGradients(size_t ntests)
          }
       }
 
-      /* for (size_t i = 0; i < m; i++) { */
-      /*    for (size_t j = 0; j < n; j++) { */
-      /*       ZRef(i,j) *= W(i,0); */
-      /*    } */
-      /* } */
+      for (size_t j = 0; j < m; j++) {
+         for (size_t k = 0; k < n; k++) {
+            ZRef(j,k) *= W(j,0);
+         }
+      }
 
       TMatrixT<Double_t> Z(ZArch);
       Double_t error = maximumRelativeError(Z, ZRef);
