@@ -47,6 +47,7 @@ if (CUDA_FOUND)
   # DNN - DataLoader Cuda
   CUDA_ADD_EXECUTABLE(testDataLoaderCuda TestDataLoaderCuda.cxx)
   TARGET_LINK_LIBRARIES(testDataLoaderCuda ${Libraries} ${DNN_CUDA_LIBRARIES})
+  ROOT_ADD_TEST(TMVA-DNN-DataLoaderCuda COMMAND testDataLoaderCuda)
 endif (CUDA_FOUND)
 
 #--- CPU tests. ----------------------------
